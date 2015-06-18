@@ -1,0 +1,106 @@
+ECLIPSE ANDROID PROJECT IMPORT SUMMARY
+======================================
+
+Ignored Files:
+--------------
+The following files were *not* copied into the new Gradle project; you
+should evaluate whether these are still needed in your project and if
+so manually move them:
+
+* new/
+* new/.idea/
+* new/.idea/.name
+* new/.idea/compiler.xml
+* new/.idea/copyright/
+* new/.idea/copyright/profiles_settings.xml
+* new/.idea/misc.xml
+* new/.idea/modules.xml
+* new/.idea/vcs.xml
+* new/.idea/workspace.xml
+* new/app/
+* new/app/build.gradle
+* new/app/src/
+* new/app/src/main/
+* new/app/src/main/AndroidManifest.xml
+* new/app/src/main/java/
+* new/app/src/main/java/nl/
+* new/app/src/main/java/nl/vu/
+* new/app/src/main/java/nl/vu/cs/
+* new/app/src/main/java/nl/vu/cs/cn/
+* new/app/src/main/java/nl/vu/cs/cn/Chat.java
+* new/app/src/main/java/nl/vu/cs/cn/IP.java
+* new/app/src/main/java/nl/vu/cs/cn/TCP.java
+* new/app/src/main/java/nl/vu/cs/cn/TCPPacketHandler.java
+* new/app/src/main/java/nl/vu/cs/cn/TCPSegment.java
+* new/app/src/main/java/nl/vu/cs/cn/TcpControlBlock.java
+* new/app/src/main/java/nl/vu/cs/cn/flexBuf.java
+* new/app/src/main/jniLibs/
+* new/app/src/main/jniLibs/armeabi-v7a/
+* new/app/src/main/jniLibs/armeabi-v7a/libcnpracticum.so
+* new/app/src/main/jniLibs/armeabi/
+* new/app/src/main/jniLibs/armeabi/libcnpracticum.so
+* new/app/src/main/jniLibs/x86/
+* new/app/src/main/jniLibs/x86/libcnpracticum.so
+* new/app/src/main/res/
+* new/app/src/main/res/drawable/
+* new/app/src/main/res/drawable/ic_launcher.png
+* new/app/src/main/res/layout/
+* new/app/src/main/res/layout/main.xml
+* new/app/src/main/res/values/
+* new/app/src/main/res/values/strings.xml
+* new/app/src/main/resources/
+* new/app/src/main/resources/.idea/
+* new/app/src/main/resources/.idea/.name
+* new/app/src/main/resources/.idea/compiler.xml
+* new/app/src/main/resources/.idea/copyright/
+* new/app/src/main/resources/.idea/copyright/profiles_settings.xml
+* new/app/src/main/resources/.idea/misc.xml
+* new/app/src/main/resources/.idea/modules.xml
+* new/app/src/main/resources/.idea/vcs.xml
+* new/app/src/main/resources/.idea/workspace.xml
+* new/app/src/main/resources/cnpractical.iml
+* new/build.gradle
+* new/gradle/
+* new/gradle/wrapper/
+* new/gradle/wrapper/gradle-wrapper.jar
+* new/gradle/wrapper/gradle-wrapper.properties
+* new/gradlew
+* new/gradlew.bat
+* new/local.properties
+* new/settings.gradle
+* proguard.cfg
+
+Moved Files:
+------------
+Android Gradle projects use a different directory structure than ADT
+Eclipse projects. Here's how the projects were restructured:
+
+* AndroidManifest.xml => app/src/main/AndroidManifest.xml
+* libs/armeabi-v7a/libcnpracticum.so => app/src/main/jniLibs/armeabi-v7a/libcnpracticum.so
+* libs/armeabi/libcnpracticum.so => app/src/main/jniLibs/armeabi/libcnpracticum.so
+* libs/x86/libcnpracticum.so => app/src/main/jniLibs/x86/libcnpracticum.so
+* res/ => app/src/main/res/
+* src/ => app/src/main/java/
+* src/.idea/.name => app/src/main/resources/.idea/.name
+* src/.idea/compiler.xml => app/src/main/resources/.idea/compiler.xml
+* src/.idea/copyright/profiles_settings.xml => app/src/main/resources/.idea/copyright/profiles_settings.xml
+* src/.idea/misc.xml => app/src/main/resources/.idea/misc.xml
+* src/.idea/modules.xml => app/src/main/resources/.idea/modules.xml
+* src/.idea/vcs.xml => app/src/main/resources/.idea/vcs.xml
+* src/.idea/workspace.xml => app/src/main/resources/.idea/workspace.xml
+* src/cnpractical.iml => app/src/main/resources/cnpractical.iml
+
+Next Steps:
+-----------
+You can now build the project. The Gradle project needs network
+connectivity to download dependencies.
+
+Bugs:
+-----
+If for some reason your project does not build, and you determine that
+it is due to a bug or limitation of the Eclipse to Gradle importer,
+please file a bug at http://b.android.com with category
+Component-Tools.
+
+(This import summary is for your information only, and can be deleted
+after import once you are satisfied with the results.)
