@@ -59,30 +59,16 @@ public class TCP {
                 return false;
             }
 
-            tcb.tcb_their_ip_address = Integer.reverseBytes(dst.getAddress());
-            tcb.tcb_their_port = port;
-            tcb.tcb_state = TcpControlBlock.ConnectionState.SYN_SENT;
-            int initialSeqNumber = new Random().nextInt();
-            tcb.tcb_our_sequence_number = initialSeqNumber;
-            tcb.tcb_their_sequence_num = 0;
-            tcb.tcb_our_expected_ack = initialSeqNumber + 1;
-            byte [] emptyData = new byte[0];
-            TCPSegment syn = new TCPSegment(tcb, util.SYN , emptyData);
 
-            Log.i("IP: " + Integer.reverseBytes(tcb.tcb_our_ip_address), "CONNECTING TO IP: " + Integer.reverseBytes(tcb.tcb_their_ip_address));
 
-            if (send(syn, util.SYNACK)){
-                tcb.tcb_state = TcpControlBlock.ConnectionState.ESTABLISHED;
-                tcb.tcb_our_sequence_number ++;
-                tcb.tcb_our_expected_ack ++;
-                tcb.tcb_their_sequence_num ++;
-                TCPSegment ack = new TCPSegment(tcb, util.DATA, emptyData);
-                try{
-                    sendSegment(ack, tcb);
-                }catch (Exception e){
-                    return false;
-                }
-                return true;
+            TCPSegment synack = sendSYN(dst, port);
+
+            if (synack != null){
+                if (sendACK(synack)){
+                    return true;
+                };
+
+                return false;
             }
 
             return false;
@@ -102,14 +88,16 @@ public class TCP {
             try {
                 while(true) {
 
-                    TCPSegment syn = receiveSegment(3);
+                    TCPSegment syn = receiveSegment(0);
 
                     if (syn.isValid(tcb, util.SYN)) {
 
                         tcb.tcb_state = TcpControlBlock.ConnectionState.SYN_RCVD;
-                        tcb.tcb_their_sequence_num ++;
+                        tcb.tcb_our_sequence_number = new Random().nextInt();
+                        tcb.tcb_their_sequence_num = syn.sequenceNumber + 1;
                         TCPSegment synack = new TCPSegment(tcb, util.SYNACK, new byte[0]);
-                        if (send(synack, util.DATA)) {
+                        TCPSegment ack = send(synack, util.DATA);
+                        if (ack != null) {
                             tcb.tcb_state = TcpControlBlock.ConnectionState.ESTABLISHED;
                             break;
                         }
@@ -169,7 +157,47 @@ public class TCP {
             return false;
         }
 
-        private boolean send(TCPSegment segment, int expectedFlags){
+        private TCPSegment sendSYN(IP.IpAddress dst, short port){
+            tcb.tcb_their_ip_address = Integer.reverseBytes(dst.getAddress());
+            tcb.tcb_their_port = port;
+            tcb.tcb_state = TcpControlBlock.ConnectionState.SYN_SENT;
+            int initialSeqNumber = new Random().nextInt();
+            tcb.tcb_our_sequence_number = initialSeqNumber;
+            tcb.tcb_their_sequence_num = 0;
+            tcb.tcb_our_expected_ack = initialSeqNumber + 1;
+            TCPSegment syn = new TCPSegment(tcb, util.SYN , new byte[0]);
+
+            Log.i("IP: " + Integer.reverseBytes(tcb.tcb_our_ip_address), "CONNECTING TO IP: " + Integer.reverseBytes(tcb.tcb_their_ip_address));
+
+            TCPSegment synack = send(syn, util.SYNACK);
+
+            if (synack != null){
+                tcb.tcb_state = TcpControlBlock.ConnectionState.SYN_RCVD;
+                tcb.tcb_our_sequence_number ++;
+                tcb.tcb_our_expected_ack ++;
+                tcb.tcb_their_sequence_num = synack.sequenceNumber;
+            }
+
+            return synack;
+
+        }
+
+
+        private boolean sendACK(TCPSegment sgmt){
+            int offset = sgmt.length == 0 ? 1: sgmt.length;
+            tcb.tcb_their_sequence_num = sgmt.sequenceNumber + offset;
+            TCPSegment ack = new TCPSegment(tcb, util.DATA, new byte[0]);
+            try {
+                sendSegment(ack , tcb);
+                return true;
+            }catch (Exception e){
+                return false;
+            }
+
+
+        }
+
+        private TCPSegment send(TCPSegment segment, int expectedFlags){
 
             int attempts = 0;
 
@@ -183,8 +211,7 @@ public class TCP {
                         Log.i("IP " + Integer.reverseBytes(tcb.tcb_our_ip_address), "receive packet: " + receivedSegment.toString());
 
                         if (receivedSegment.isValid(tcb, expectedFlags)){
-                            tcb.tcb_their_sequence_num += 1;
-                            return true;
+                            return receivedSegment;
                         }else{
                             attempts++;
                         }
@@ -198,7 +225,7 @@ public class TCP {
                 }
             }
 
-            return false;
+            return null;
         }
 
     }

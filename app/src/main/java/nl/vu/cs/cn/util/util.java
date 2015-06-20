@@ -9,7 +9,7 @@ public class util {
     static final public byte DATA=24;
     static final public byte FIN=25;
 
-    static final public int MAX_ATTEMPTS=10;
+    static final public int MAX_ATTEMPTS=2;
     static final public int TIMEOUT = 1;
 
 }

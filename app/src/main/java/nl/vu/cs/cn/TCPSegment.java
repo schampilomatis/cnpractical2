@@ -149,11 +149,6 @@ public class TCPSegment {
 
         switch (expectedFlags){
             case util.SYN:
-                if (check){
-                    tcb.tcb_their_ip_address = this.sourceIP;
-                    tcb.tcb_their_port = this.sourcePort;
-                    tcb.tcb_their_sequence_num = this.sequenceNumber;
-                }
                 break;
 
             case util.SYNACK:
@@ -162,11 +157,6 @@ public class TCPSegment {
                         && this.ackNumber == tcb.tcb_our_expected_ack
                         && this.sourceIP == tcb.tcb_their_ip_address
                         && this.sourcePort == tcb.tcb_their_port;
-
-                if (check){
-                    tcb.tcb_their_sequence_num = this.sequenceNumber;
-                }
-
                 break;
 
 
@@ -176,7 +166,7 @@ public class TCPSegment {
                         && this.ackNumber == tcb.tcb_our_expected_ack
                         && this.sourceIP == tcb.tcb_their_ip_address
                         && this.sourcePort == tcb.tcb_their_port
-                        && this.sequenceNumber == tcb.tcb_their_sequence_num + 1;
+                        && this.sequenceNumber == tcb.tcb_their_sequence_num;
 
                 break;
 
