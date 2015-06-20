@@ -128,9 +128,63 @@ public class TCP {
          */
         public int read(byte[] buf, int offset, int maxlen) {
 
+            if (tcb.tcb_state != TcpControlBlock.ConnectionState.ESTABLISHED
+                    && tcb.tcb_state != TcpControlBlock.ConnectionState.READ_ONLY){
+                return -1;
+            }
+            int start = offset;
+            int dataleft = maxlen;
+            int dataFromBuffer = readFromBuffer(buf, offset, maxlen);
+            start += dataFromBuffer;
+            dataleft -= dataFromBuffer;
+
+            while (dataleft > 0){
+                TCPSegment dataSgmt = receiveDataSegment();
+                if (dataSgmt != null) {
+                    if (dataSgmt.data.length > dataleft) {
+                        System.arraycopy(dataSgmt.data, 0, buf, start, dataleft);
+                        byte[] receivedBuf = new byte[dataSgmt.data.length - dataleft];
+                        System.arraycopy(dataSgmt.data, dataleft, receivedBuf, 0, dataSgmt.data.length - dataleft );
+
+                        dataleft = 0;
+
+                    }else{
+                        int readBytesLen = dataSgmt.data.length;
+                        System.arraycopy(dataSgmt.data, 0, buf, start, readBytesLen);
+                        dataleft -= readBytesLen;
+                        start += readBytesLen;
+                    }
+                }else{
+                    return maxlen - dataleft;
+                }
+            }
+
+            return maxlen;
 
 
-            return -1;
+        }
+
+        private int readFromBuffer(byte[] buf, int offset, int maxlen){
+
+            int undeliveredDataLength = tcb.tcb_received_data.length;
+            if (undeliveredDataLength > 0){
+                int dataFromBuffer = undeliveredDataLength;
+                if (undeliveredDataLength > maxlen){
+                    dataFromBuffer = maxlen;
+                }
+                System.arraycopy(buf, offset, tcb.tcb_received_data, 0, dataFromBuffer);
+                int newReceivedBufLen = undeliveredDataLength - dataFromBuffer;
+                byte[] newReceivedBuf = new byte[newReceivedBufLen];
+                if (newReceivedBufLen > 0){
+                    System.arraycopy(tcb.tcb_received_data, dataFromBuffer, newReceivedBuf, 0, newReceivedBufLen);
+                }
+                tcb.tcb_received_data = newReceivedBuf;
+                return dataFromBuffer;
+
+
+            }else{
+                return 0;
+            }
         }
 
         /**
@@ -168,12 +222,15 @@ public class TCP {
                 if (ack != null){
                     start = start + sgmt_len;
                     tcb.tcb_data_left = tcb.tcb_data_left - sgmt_len;
+                }else{
+                    return start - offset;
                 }
 
-                return start - offset;
+
 
 
             }
+            return start - offset;
 
         }
 
@@ -243,7 +300,7 @@ public class TCP {
                         TCPSegment receivedSegment = receiveSegment(util.TIMEOUT);
                         Log.i("IP " + Integer.reverseBytes(tcb.tcb_our_ip_address), "receive packet: " + receivedSegment.toString());
 
-                        if (receivedSegment.isValid(tcb, expectedFlags)){
+                        if (receivedSegment.hasValidChecksum() && receivedSegment.isValid(tcb, expectedFlags)){
                             return receivedSegment;
                         }else{
                             attempts++;
@@ -263,9 +320,35 @@ public class TCP {
 
         private TCPSegment receiveDataSegment(){
             int attempts = 0;
+            while (attempts < util.MAX_ATTEMPTS) {
+                try {
+                    TCPSegment datasgmt = receiveSegment(util.TIMEOUT);
+                    if (datasgmt.hasValidChecksum()){
+
+                        if (datasgmt.isValid(tcb, util.DATA)){
+                            return datasgmt;
+                        }else if(datasgmt.isPreviousData(tcb)){
+                            sendACK(datasgmt);
+                            attempts ++;
+                        }else if(datasgmt.isPreviousSYNACK(tcb)){
+                            sendACK(datasgmt);
+                            attempts++;
+                        }else if(datasgmt.isFIN(tcb)){
+                            attempts++;
+                        };
+
+
+                    };
+                }catch (Exception e){
+                    attempts++;
+                }
+
+            }
+            return null;
         }
 
     }
+
 
     private int sendSegment(TCPSegment tcpSeg,TcpControlBlock tcb) throws IOException{
 

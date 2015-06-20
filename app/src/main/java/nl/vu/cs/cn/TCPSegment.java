@@ -55,7 +55,7 @@ public class TCPSegment {
         this.checksum = buffer.getShort(CHECKSUM);
         this.data = new byte[pck.length-DATA];
         if (this.data.length > 0) {
-            buffer.get(this.data, DATA, this.data.length);
+            System.arraycopy(pck.data, DATA, this.data, 0, this.data.length);
         }
         this.length = pck.length;
         this.sourceIP = Integer.reverseBytes(pck.source);
@@ -140,12 +140,43 @@ public class TCPSegment {
 
     }
 
+    public boolean hasValidChecksum(){
+        return this.computeChecksum() == 0;
+    }
+
+    public boolean isPreviousData(TcpControlBlock tcb){
+        return  this.destinationPort == tcb.tcb_our_port
+                && this.destinationIP == tcb.tcb_our_ip_address
+                && this.ackNumber == tcb.tcb_our_expected_ack
+                && this.sourceIP == tcb.tcb_their_ip_address
+                && this.sourcePort == tcb.tcb_their_port
+                && this.sequenceNumber == tcb.tcb_their_sequence_num - length;
+    }
+
+    public boolean isFIN(TcpControlBlock tcb){
+        return this.destinationPort == tcb.tcb_our_port
+                && this.destinationIP == tcb.tcb_our_ip_address
+                && this.sourceIP == tcb.tcb_their_ip_address
+                && this.sourcePort == tcb.tcb_their_port
+                && this.sequenceNumber == tcb.tcb_their_sequence_num
+                && this.tcpFlags == util.FIN;
+    }
+
+    public boolean isPreviousSYNACK(TcpControlBlock tcb){
+        return this.destinationPort == tcb.tcb_our_port
+                && this.destinationIP == tcb.tcb_our_ip_address
+                && this.sourceIP == tcb.tcb_their_ip_address
+                && this.sourcePort == tcb.tcb_their_port
+                && this.sequenceNumber == tcb.tcb_their_sequence_num -1
+                && this.tcpFlags == util.SYNACK;
+    }
+
     public boolean isValid(TcpControlBlock tcb, int expectedFlags){
 
-        boolean check = (this.computeChecksum() == 0)
-                && this.tcpFlags == expectedFlags
+        boolean check = this.tcpFlags == expectedFlags
                 && this.destinationPort == tcb.tcb_our_port
-                && this.destinationIP == tcb.tcb_our_ip_address;
+                && this.destinationIP == tcb.tcb_our_ip_address
+                ;
 
         switch (expectedFlags){
             case util.SYN:
