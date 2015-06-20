@@ -12,4 +12,6 @@ public class util {
     static final public int MAX_ATTEMPTS=2;
     static final public int TIMEOUT = 1;
 
+    static final public int MAX_DATA_LEN = 8172;
+
 }

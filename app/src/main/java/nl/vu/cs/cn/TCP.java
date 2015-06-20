@@ -65,6 +65,7 @@ public class TCP {
 
             if (synack != null){
                 if (sendACK(synack)){
+                    tcb.tcb_state = TcpControlBlock.ConnectionState.ESTABLISHED;
                     return true;
                 };
 
@@ -93,8 +94,11 @@ public class TCP {
                     if (syn.isValid(tcb, util.SYN)) {
 
                         tcb.tcb_state = TcpControlBlock.ConnectionState.SYN_RCVD;
+                        tcb.tcb_their_ip_address = syn.sourceIP;
+                        tcb.tcb_their_port = syn.sourcePort;
                         tcb.tcb_our_sequence_number = new Random().nextInt();
                         tcb.tcb_their_sequence_num = syn.sequenceNumber + 1;
+                        tcb.tcb_our_expected_ack = tcb.tcb_our_sequence_number + 1;
                         TCPSegment synack = new TCPSegment(tcb, util.SYNACK, new byte[0]);
                         TCPSegment ack = send(synack, util.DATA);
                         if (ack != null) {
@@ -124,7 +128,7 @@ public class TCP {
          */
         public int read(byte[] buf, int offset, int maxlen) {
 
-            // Read from the socket here.
+
 
             return -1;
         }
@@ -139,9 +143,38 @@ public class TCP {
          */
         public int write(byte[] buf, int offset, int len) {
 
-            // Write to the socket here.
+            if (tcb.tcb_state != TcpControlBlock.ConnectionState.ESTABLISHED
+                && tcb.tcb_state != TcpControlBlock.ConnectionState.WRITE_ONLY){
+                return -1;
+            }
+            tcb.tcb_data_left = len;
+            int start = offset;
+            while (tcb.tcb_data_left > 0){
+                int sgmt_len;
+                if (tcb.tcb_data_left > util.MAX_DATA_LEN){
+                    sgmt_len = util.MAX_DATA_LEN;
+                }else{
+                    sgmt_len = tcb.tcb_data_left;
+                }
 
-            return -1;
+                byte[] sgmt_data = new byte[sgmt_len];
+                System.arraycopy(buf, start, sgmt_data, 0, sgmt_len);
+
+                TCPSegment sgmt = new TCPSegment(tcb, util.DATA, sgmt_data);
+                tcb.tcb_our_sequence_number = tcb.tcb_our_expected_ack;
+                tcb.tcb_our_expected_ack += sgmt_len;
+                TCPSegment ack = send(sgmt, util.DATA);
+
+                if (ack != null){
+                    start = start + sgmt_len;
+                    tcb.tcb_data_left = tcb.tcb_data_left - sgmt_len;
+                }
+
+                return start - offset;
+
+
+            }
+
         }
 
         /**
@@ -184,7 +217,7 @@ public class TCP {
 
 
         private boolean sendACK(TCPSegment sgmt){
-            int offset = sgmt.length == 0 ? 1: sgmt.length;
+            int offset = sgmt.data.length == 0 ? 1: sgmt.data.length;
             tcb.tcb_their_sequence_num = sgmt.sequenceNumber + offset;
             TCPSegment ack = new TCPSegment(tcb, util.DATA, new byte[0]);
             try {
@@ -226,6 +259,10 @@ public class TCP {
             }
 
             return null;
+        }
+
+        private TCPSegment receiveDataSegment(){
+            int attempts = 0;
         }
 
     }

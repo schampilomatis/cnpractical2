@@ -21,8 +21,7 @@ public class TcpControlBlock {
     int             tcb_our_sequence_number;
     int             tcb_our_expected_ack;
     int             tcb_their_sequence_num;
-    byte[]          tcb_data = new byte[TCB_BUF_SIZE];
-    byte            tcb_p_data;
+    byte[]          tcb_received_data;
     int             tcb_data_left;
     ConnectionState tcb_state;
 
