@@ -103,6 +103,7 @@ public class TCP {
                         TCPSegment ack = send(synack, util.DATA);
                         if (ack != null) {
                             tcb.tcb_state = TcpControlBlock.ConnectionState.ESTABLISHED;
+                            tcb.tcb_our_sequence_number ++;
                             break;
                         }
                     }
@@ -220,6 +221,7 @@ public class TCP {
                 TCPSegment ack = send(sgmt, util.DATA);
 
                 if (ack != null){
+
                     start = start + sgmt_len;
                     tcb.tcb_data_left = tcb.tcb_data_left - sgmt_len;
                 }else{
@@ -264,8 +266,7 @@ public class TCP {
             if (synack != null){
                 tcb.tcb_state = TcpControlBlock.ConnectionState.SYN_RCVD;
                 tcb.tcb_our_sequence_number ++;
-                tcb.tcb_our_expected_ack ++;
-                tcb.tcb_their_sequence_num = synack.sequenceNumber;
+                tcb.tcb_their_sequence_num = synack.sequenceNumber ;
             }
 
             return synack;
@@ -325,6 +326,7 @@ public class TCP {
                     if (datasgmt.hasValidChecksum()){
 
                         if (datasgmt.isValid(tcb, util.DATA)){
+                            sendACK(datasgmt);
                             return datasgmt;
                         }else if(datasgmt.isPreviousData(tcb)){
                             sendACK(datasgmt);
@@ -351,7 +353,7 @@ public class TCP {
 
     private int sendSegment(TCPSegment tcpSeg,TcpControlBlock tcb) throws IOException{
 
-        Log.i("IP " + Integer.reverseBytes(tcb.tcb_our_ip_address), "send segment: " + tcpSeg.toString());
+        Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)), "send segment: " + tcpSeg.toString());
         int dstAddress = Integer.reverseBytes(tcb.tcb_their_ip_address);
         int packetID = new Random().nextInt();
         byte[] data = new byte[tcpSeg.length()];
@@ -368,7 +370,7 @@ public class TCP {
         IP.Packet pck = new IP.Packet();
         ip.ip_receive_timeout(pck, timeout);
         TCPSegment result = new TCPSegment(pck);
-        Log.i("IP " + pck.destination , "receive segment: " + result.toString());
+        Log.i("IP: " + IP.IpAddress.htoa(pck.destination) , "receive segment: " + result.toString());
         return new TCPSegment(pck);
 
     }

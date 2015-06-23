@@ -13,8 +13,8 @@ public class Chat extends Activity {
 				TCP tcp = new TCP(30);
 				TCP.Socket serversock = tcp.socket((short) 1000);
 				serversock.accept();
-				byte[] msgArray = new byte[5];
-				serversock.read(msgArray, 0 , 5);
+				byte[] msgArray = new byte[10];
+				serversock.read(msgArray, 0 , 10);
 				String msg = new String(msgArray);
 				Log.i("Received Msg", msg + "\n");
 				msgArray = new byte[2];
@@ -38,7 +38,10 @@ public class Chat extends Activity {
 				clientsock.connect(IP.IpAddress.getAddress("192.168.0.30"),(short)1000);
 				String msg = "Nikolas";
 				byte [] msgArray = msg.getBytes();
-				clientsock.write(msgArray, 0, msgArray.length );
+				clientsock.write(msgArray, 0, msgArray.length);
+				String msg2 = "stavr";
+				byte [] msgArray2 = msg2.getBytes();
+				clientsock.write(msgArray2, 0, msgArray2.length );
 			}catch(Exception e){
 				Log.i("exception", e.getMessage());
 			}

@@ -209,7 +209,7 @@ public class TCPSegment {
         }
 
         if(!check){
-            Log.i("IP: " + Integer.reverseBytes(tcb.tcb_our_ip_address) , "Invalid Segment: " + this.toString());
+            Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)), "Invalid Segment: " + this.toString());
         }
 
         return check;
@@ -218,8 +218,9 @@ public class TCPSegment {
     }
 
     public String toString(){
-        return "sourcePort: " + this.sourcePort + " destinationPort: " + this.destinationPort +
-                " sequenceNumber: " + this.sequenceNumber + " ackNumber: " + this.ackNumber +
+//        return "sourcePort: " + IP.IpAddress.htoa(this.sourcePort) + " destinationPort: " + IP.IpAddress.htoa(this.destinationPort) +
+
+        return " sequenceNumber: " + this.sequenceNumber%100 + " ackNumber: " + this.ackNumber%100 +
                 " tcpFlags: " + this.tcpFlags + " checksum: " + this.checksum + " data: " + new String(this.data) + " length: " + this.length;
     }
 }
