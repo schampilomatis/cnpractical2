@@ -214,14 +214,12 @@ public class TCP {
 
                 byte[] sgmt_data = new byte[sgmt_len];
                 System.arraycopy(buf, start, sgmt_data, 0, sgmt_len);
-
-                TCPSegment sgmt = new TCPSegment(tcb, util.DATA, sgmt_data);
-                tcb.tcb_our_sequence_number = tcb.tcb_our_expected_ack;
                 tcb.tcb_our_expected_ack += sgmt_len;
+                TCPSegment sgmt = new TCPSegment(tcb, util.DATA, sgmt_data);
                 TCPSegment ack = send(sgmt, util.DATA);
 
                 if (ack != null){
-
+                    tcb.tcb_our_sequence_number = tcb.tcb_our_expected_ack;
                     start = start + sgmt_len;
                     tcb.tcb_data_left = tcb.tcb_data_left - sgmt_len;
                 }else{
@@ -244,7 +242,31 @@ public class TCP {
          */
         public boolean close() {
 
-            // Close the socket cleanly here.
+            if (tcb.tcb_state == TcpControlBlock.ConnectionState.ESTABLISHED){
+
+                TCPSegment ack = sendFIN();
+//                while (ack == null){
+//                    ack = sendFIN();
+//                }
+
+                tcb.tcb_state = TcpControlBlock.ConnectionState.READ_ONLY;
+                tcb.tcb_our_sequence_number++;
+
+                return true;
+
+
+            }else if (tcb.tcb_state == TcpControlBlock.ConnectionState.WRITE_ONLY){
+                TCPSegment ack = sendFIN();
+//                while (ack == null){
+//                    ack = sendFIN();
+//                }
+
+                tcb.tcb_our_sequence_number++;
+
+                terminate();
+                return true;
+
+            }
 
             return false;
         }
@@ -287,6 +309,38 @@ public class TCP {
 
 
         }
+
+        private TCPSegment sendFIN(){
+            TCPSegment fin = new TCPSegment(tcb, util.FIN, new byte[0]);
+            try{
+                TCPSegment ack =  send(fin, util.DATA);
+                return ack;
+            }catch(Exception e){
+                return null;
+            }
+        }
+
+        private void receivedFIN(TCPSegment fin){
+            if (tcb.tcb_state == TcpControlBlock.ConnectionState.ESTABLISHED) {
+                tcb.tcb_state = TcpControlBlock.ConnectionState.WRITE_ONLY;
+                sendACK(fin);
+            }else if (tcb.tcb_state == TcpControlBlock.ConnectionState.READ_ONLY){
+                sendACK(fin);
+
+                new java.util.Timer().schedule(
+                        new java.util.TimerTask() {
+                            @Override
+                            public void run() {
+                                terminate();
+                            }
+                        },
+                        5000
+                );
+
+            }
+        }
+
+
 
         private TCPSegment send(TCPSegment segment, int expectedFlags){
 
@@ -335,6 +389,7 @@ public class TCP {
                             sendACK(datasgmt);
                             attempts++;
                         }else if(datasgmt.isFIN(tcb)){
+                            receivedFIN(datasgmt);
                             attempts++;
                         };
 
@@ -346,6 +401,11 @@ public class TCP {
 
             }
             return null;
+        }
+
+        private void terminate(){
+            tcb.tcb_state = TcpControlBlock.ConnectionState.CLOSED;
+            tcb.clear();
         }
 
     }
@@ -395,15 +455,16 @@ public class TCP {
      * @return a new socket for this stack
      */
     public Socket socket() {
-        return new Socket((short)1);
+        int port = new Random().nextInt(util.MAX_PORT - util.MIN_PORT) + 1024;
+        return new Socket((short)port);
     }
 
     /**
      * @return a new server socket for this stack bound to the given port
      * @param port the port to bind the socket to.
      */
-    public Socket socket(short port) {
-        return new Socket(port);
+    public Socket socket(int port) {
+        return new Socket((short)port);
     }
 
 

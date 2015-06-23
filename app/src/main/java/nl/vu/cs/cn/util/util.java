@@ -14,4 +14,7 @@ public class util {
 
     static final public int MAX_DATA_LEN = 8172;
 
+    static final public int MAX_PORT = 65535;
+    static final public int MIN_PORT = 1024;
+
 }

@@ -25,4 +25,15 @@ public class TcpControlBlock {
     int             tcb_data_left;
     ConnectionState tcb_state;
 
+    public void clear(){
+        tcb_our_ip_address = 0;
+        tcb_our_sequence_number = 0;
+        tcb_our_expected_ack = 0;
+        tcb_their_ip_address = 0;
+        tcb_their_port = 0;
+        tcb_our_port = 0;
+        tcb_their_sequence_num = 0;
+        tcb_data_left = 0;
+    }
+
 }
