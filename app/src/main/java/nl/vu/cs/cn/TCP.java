@@ -145,7 +145,7 @@ public class TCP {
                         System.arraycopy(dataSgmt.data, 0, buf, start, dataleft);
                         byte[] receivedBuf = new byte[dataSgmt.data.length - dataleft];
                         System.arraycopy(dataSgmt.data, dataleft, receivedBuf, 0, dataSgmt.data.length - dataleft );
-
+                        tcb.tcb_received_data = receivedBuf;
                         dataleft = 0;
 
                     }else{
@@ -172,7 +172,7 @@ public class TCP {
                 if (undeliveredDataLength > maxlen){
                     dataFromBuffer = maxlen;
                 }
-                System.arraycopy(buf, offset, tcb.tcb_received_data, 0, dataFromBuffer);
+                System.arraycopy( tcb.tcb_received_data, 0, buf, offset, dataFromBuffer);
                 int newReceivedBufLen = undeliveredDataLength - dataFromBuffer;
                 byte[] newReceivedBuf = new byte[newReceivedBufLen];
                 if (newReceivedBufLen > 0){
@@ -293,12 +293,11 @@ public class TCP {
 
             while (attempts < util.MAX_ATTEMPTS) {
                 try {
-                    Log.i("IP " + Integer.reverseBytes(tcb.tcb_our_ip_address), "send packet: " + segment.toString());
+
                     sendSegment(segment, tcb);
                     try {
 
                         TCPSegment receivedSegment = receiveSegment(util.TIMEOUT);
-                        Log.i("IP " + Integer.reverseBytes(tcb.tcb_our_ip_address), "receive packet: " + receivedSegment.toString());
 
                         if (receivedSegment.hasValidChecksum() && receivedSegment.isValid(tcb, expectedFlags)){
                             return receivedSegment;
@@ -352,11 +351,12 @@ public class TCP {
 
     private int sendSegment(TCPSegment tcpSeg,TcpControlBlock tcb) throws IOException{
 
+        Log.i("IP " + Integer.reverseBytes(tcb.tcb_our_ip_address), "send segment: " + tcpSeg.toString());
         int dstAddress = Integer.reverseBytes(tcb.tcb_their_ip_address);
         int packetID = new Random().nextInt();
         byte[] data = new byte[tcpSeg.length()];
         tcpSeg.toArray(data, 0);
-        IP.Packet pck = new IP.Packet(dstAddress,IP. TCP_PROTOCOL, packetID,data, tcpSeg.length());
+        IP.Packet pck = new IP.Packet(dstAddress,IP. TCP_PROTOCOL, packetID, data, tcpSeg.length());
 
 
         return ip.ip_send(pck);
@@ -367,6 +367,8 @@ public class TCP {
 
         IP.Packet pck = new IP.Packet();
         ip.ip_receive_timeout(pck, timeout);
+        TCPSegment result = new TCPSegment(pck);
+        Log.i("IP " + pck.destination , "receive segment: " + result.toString());
         return new TCPSegment(pck);
 
     }

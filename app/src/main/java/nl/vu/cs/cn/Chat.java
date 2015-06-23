@@ -13,10 +13,15 @@ public class Chat extends Activity {
 				TCP tcp = new TCP(30);
 				TCP.Socket serversock = tcp.socket((short) 1000);
 				serversock.accept();
-				byte[] msgArray = new byte[7];
-				serversock.read(msgArray, 0 , 7);
-				String msg = msgArray.toString();
-				Log.i("Received Msg", msg);
+				byte[] msgArray = new byte[5];
+				serversock.read(msgArray, 0 , 5);
+				String msg = new String(msgArray);
+				Log.i("Received Msg", msg + "\n");
+				msgArray = new byte[2];
+				serversock.read(msgArray, 0, 2);
+				msg = new String(msgArray);
+				Log.i("Received Msg", msg + "\n");
+
 
 			}catch(Exception e){
 				Log.i("exception", e.getMessage());

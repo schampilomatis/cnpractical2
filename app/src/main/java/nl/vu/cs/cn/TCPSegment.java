@@ -137,7 +137,9 @@ public class TCPSegment {
         buffer.putShort(UNUSED2, (short)0);
 
         System.arraycopy(buffer.array(), 0, dst, offset, this.length);
-
+        if (this.data.length > 0){
+            System.arraycopy(this.data, 0, dst, offset + DATA, this.data.length);
+        }
     }
 
     public boolean hasValidChecksum(){
@@ -218,6 +220,6 @@ public class TCPSegment {
     public String toString(){
         return "sourcePort: " + this.sourcePort + " destinationPort: " + this.destinationPort +
                 " sequenceNumber: " + this.sequenceNumber + " ackNumber: " + this.ackNumber +
-                " tcpFlags: " + this.tcpFlags + " checksum: " + this.checksum;
+                " tcpFlags: " + this.tcpFlags + " checksum: " + this.checksum + " data: " + new String(this.data) + " length: " + this.length;
     }
 }
