@@ -136,6 +136,7 @@ public class TCPSegment {
         buffer.putShort(CHECKSUM, this.checksum);
         buffer.putShort(UNUSED2, (short)0);
 
+        System.arraycopy(this.data,0,dst,DATA+offset,this.data.length);
         System.arraycopy(buffer.array(), 0, dst, offset, this.length);
         if (this.data.length > 0){
             System.arraycopy(this.data, 0, dst, offset + DATA, this.data.length);
