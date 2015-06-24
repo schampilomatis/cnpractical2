@@ -375,7 +375,7 @@ public class TCP {
                         }
                     }
                     else{
-                        tcb.ackReceivedfromRead = true;
+                        tcb.ackReceivedfromRead = false;
                         return new TCPSegment(tcb, util.DATA, new byte[0]);
                     }
 
