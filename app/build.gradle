@@ -1,12 +1,12 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 3
+    compileSdkVersion 20
     buildToolsVersion "22.0.1"
 
     defaultConfig {
         applicationId "nl.vu.cs.cn"
-        minSdkVersion 3
+        minSdkVersion 20
         compileOptions {
             sourceCompatibility JavaVersion.VERSION_1_5
             targetCompatibility JavaVersion.VERSION_1_5
