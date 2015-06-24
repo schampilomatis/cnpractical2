@@ -48,13 +48,13 @@ public class TCP {
          * Connect this socket to the specified destination and port.
          *
          * @param dst the destination to connect to
-         * @param port the port to connect to
+         * @param portInt the port to connect to
          * @return true if the connect succeeded.
          */
-        public boolean connect(IpAddress dst, short port) {
+        public boolean connect(IpAddress dst, int portInt) {
 
             // Implement the connection side of the three-way handshake here.
-
+            short port = (short)portInt;
             if (tcb.tcb_state != TcpControlBlock.ConnectionState.CLOSED){
                 return false;
             }
@@ -83,7 +83,7 @@ public class TCP {
         public void accept() {
 
             // Implement the receive side of the three-way handshake here.
-            Log.i("IP: " + Integer.reverseBytes(tcb.tcb_our_ip_address) , "ACCEPTING CONNECTIONS");
+            Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)) , "ACCEPTING CONNECTIONS");
 
             tcb.tcb_state = TcpControlBlock.ConnectionState.LISTEN;
             try {
@@ -243,11 +243,11 @@ public class TCP {
         public boolean close() {
 
             if (tcb.tcb_state == TcpControlBlock.ConnectionState.ESTABLISHED){
-
+                tcb.tcb_our_expected_ack ++;
                 TCPSegment ack = sendFIN();
-//                while (ack == null){
-//                    ack = sendFIN();
-//                }
+                while (ack == null){
+                    ack = sendFIN();
+                }
 
                 tcb.tcb_state = TcpControlBlock.ConnectionState.READ_ONLY;
                 tcb.tcb_our_sequence_number++;
@@ -256,10 +256,13 @@ public class TCP {
 
 
             }else if (tcb.tcb_state == TcpControlBlock.ConnectionState.WRITE_ONLY){
+                tcb.tcb_our_expected_ack ++;
                 TCPSegment ack = sendFIN();
-//                while (ack == null){
-//                    ack = sendFIN();
-//                }
+                while (ack == null){
+                    ack = sendFIN();
+                }while (ack == null){
+                    ack = sendFIN();
+                }
 
                 tcb.tcb_our_sequence_number++;
 
@@ -323,8 +326,10 @@ public class TCP {
         private void receivedFIN(TCPSegment fin){
             if (tcb.tcb_state == TcpControlBlock.ConnectionState.ESTABLISHED) {
                 tcb.tcb_state = TcpControlBlock.ConnectionState.WRITE_ONLY;
+                Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)) , "Received FIN in ESTABLISHED sending ack");
                 sendACK(fin);
             }else if (tcb.tcb_state == TcpControlBlock.ConnectionState.READ_ONLY){
+                Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)) , "Received FIN in READ ONLY sending ack");
                 sendACK(fin);
 
                 new java.util.Timer().schedule(
@@ -379,7 +384,10 @@ public class TCP {
                     TCPSegment datasgmt = receiveSegment(util.TIMEOUT);
                     if (datasgmt.hasValidChecksum()){
 
-                        if (datasgmt.isValid(tcb, util.DATA)){
+                        if (datasgmt.isFIN(tcb)){
+                            receivedFIN(datasgmt);
+                            break;
+                        }else if(datasgmt.isValid(tcb, util.DATA)){
                             sendACK(datasgmt);
                             return datasgmt;
                         }else if(datasgmt.isPreviousData(tcb)){
