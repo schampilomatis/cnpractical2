@@ -23,6 +23,7 @@ public class TcpControlBlock {
     int             tcb_their_sequence_num;
     byte[]          tcb_received_data = new byte[0];
     int             tcb_data_left;
+    boolean         ackReceivedfromRead = false;
     ConnectionState tcb_state;
 
     public void clear(){
