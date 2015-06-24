@@ -6,18 +6,18 @@
     android:weightSum="1">
 
     <EditText
-        android:layout_width="match_parent"
+        android:layout_width="380dp"
         android:layout_height="wrap_content"
         android:id="@+id/upperEditText" />
 
     <Button
-        android:layout_width="match_parent"
+        android:layout_width="380dp"
         android:layout_height="wrap_content"
         android:text="Send"
         android:id="@+id/upperSend" />
 
     <TextView
-        android:layout_width="match_parent"
+        android:layout_width="380dp"
         android:layout_height="150dp"
         android:id="@+id/upperTextView"
         android:layout_gravity="center_horizontal"
@@ -26,19 +26,19 @@
 
 
     <EditText
-        android:layout_width="match_parent"
+        android:layout_width="380dp"
         android:layout_height="wrap_content"
         android:id="@+id/lowerEditText" />
 
     <Button
-        android:layout_width="match_parent"
+        android:layout_width="380dp"
         android:layout_height="wrap_content"
         android:text="Send"
         android:id="@+id/lowerSend"
         android:layout_gravity="center_horizontal" />
 
     <TextView
-        android:layout_width="match_parent"
+        android:layout_width="380dp"
         android:layout_height="150dp"
         android:id="@+id/lowerTextView"
         android:scrollbars = "vertical"

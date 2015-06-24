@@ -7,7 +7,7 @@ public class util {
     static final public byte SYN=10;
     static final public byte SYNACK=26;
     static final public byte DATA=24;
-    static final public byte FIN=25;
+    static final public byte FIN=9;
 
     static final public int MAX_ATTEMPTS=10;
     static final public int TIMEOUT = 1;
@@ -16,5 +16,10 @@ public class util {
 
     static final public int MAX_PORT = 65535;
     static final public int MIN_PORT = 1024;
+
+    static final public byte SYN_BYTE= 2;
+    static final public byte ACK_BYTE=16;
+    static final public byte FIN_BYTE=1;
+
 
 }

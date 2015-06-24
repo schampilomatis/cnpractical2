@@ -107,6 +107,10 @@ public class Chat extends Activity {
 			return writeToSock(uppersock, msg);
 		}
 
+		public void close(){
+			this.uppersock.close();
+		}
+
 	}
 
 	class Lower implements Runnable{
@@ -118,7 +122,7 @@ public class Chat extends Activity {
 				TCP tcp = new TCP(LOWER_IP);
 				lowersock = tcp.socket();
 				lowersock.connect(IP.IpAddress.getAddress("192.168.0." + UPPER_IP), UPPER_PORT);
-                //new Thread(new Reader(lowersock, lowerTextView)).start();
+                new Thread(new Reader(lowersock, lowerTextView)).start();
 			}catch(Exception e){
 				Log.i("exception", e.getMessage());
 			}
@@ -133,9 +137,14 @@ public class Chat extends Activity {
 		public int write(String msg){
 			return writeToSock(lowersock, msg);
 		}
+		public void close(){
+			this.lowersock.close();
+		}
 	}
 
-	/** Called when the activity is first created. */
+	Upper upper;
+	Lower lower;
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -147,12 +156,10 @@ public class Chat extends Activity {
 		lowerEditText = (EditText) findViewById(R.id.lowerEditText);
 		upperSend = (Button) findViewById(R.id.upperSend);
 		lowerSend = (Button) findViewById(R.id.lowerSend);
-
-
 		upperTextView.setMovementMethod(new ScrollingMovementMethod());
 		lowerTextView.setMovementMethod(new ScrollingMovementMethod());
-		final Upper upper = new Upper(upperTextView);
-		final Lower lower = new Lower(lowerTextView);
+		upper = new Upper(upperTextView);
+		lower = new Lower(lowerTextView);
 
 
 
@@ -179,37 +186,34 @@ public class Chat extends Activity {
 
 		);
 
-        Thread upperThread = new Thread(upper);
-        Thread lowerThread = new Thread(lower);
-        upperThread.start();
-        lowerThread.start();
-//		upperEditText.setOnKeyListener(new View.OnKeyListener() {
-//			public boolean onKey(View view, int key, KeyEvent keyEvent) {
-//
-//
-//				if (keyEvent.getAction() == KeyEvent.ACTION_DOWN
-//						&& key == KeyEvent.KEYCODE_ENTER) {
-//					String msg = upperEditText.getText().toString();
-//					upper.write(msg);
-//					return true;
-//				}
-//				return false;
-//			}
-//		});
-//
-//		lowerEditText.setOnKeyListener(new View.OnKeyListener() {
-//			public boolean onKey(View view, int key, KeyEvent keyEvent) {
-//				if (keyEvent.getAction() == KeyEvent.ACTION_DOWN
-//						&& key == KeyEvent.KEYCODE_ENTER) {
-//					String msg = lowerEditText.getText().toString();
-//					lower.write(msg);
-//					return true;
-//				}
-//				return false;
-//			}
-//		});
+
+	}
 
 
+	@Override
+	public void onPause(){
+		super.onPause();
+		(new Thread(new Runnable() {
+			public void run() {
+				upper.close();
+			}
+		})).run();
+		(new Thread(new Runnable() {
+			public void run() {
+				lower.close();
+			}
+		})).run();
+
+	}
+
+	@Override
+	public void onResume(){
+		super.onResume();
+
+		Thread upperThread = new Thread(upper);
+		Thread lowerThread = new Thread(lower);
+		upperThread.start();
+		lowerThread.start();
 
 	}
 

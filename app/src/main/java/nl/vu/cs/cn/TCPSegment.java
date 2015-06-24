@@ -153,7 +153,8 @@ public class TCPSegment {
                 && this.ackNumber == tcb.tcb_our_expected_ack
                 && this.sourceIP == tcb.tcb_their_ip_address
                 && this.sourcePort == tcb.tcb_their_port
-                && this.sequenceNumber == tcb.tcb_their_sequence_num - length;
+                && this.sequenceNumber == tcb.tcb_their_sequence_num - length
+                &&(this.tcpFlags & util.ACK_BYTE)!=0;
     }
 
     public boolean isFIN(TcpControlBlock tcb){
@@ -162,7 +163,7 @@ public class TCPSegment {
                 && this.sourceIP == tcb.tcb_their_ip_address
                 && this.sourcePort == tcb.tcb_their_port
                 && this.sequenceNumber == tcb.tcb_their_sequence_num
-                && this.tcpFlags == util.FIN;
+                && (this.tcpFlags & util.FIN_BYTE) != 0;
     }
 
     public boolean isPreviousSYNACK(TcpControlBlock tcb){
@@ -171,23 +172,26 @@ public class TCPSegment {
                 && this.sourceIP == tcb.tcb_their_ip_address
                 && this.sourcePort == tcb.tcb_their_port
                 && this.sequenceNumber == tcb.tcb_their_sequence_num -1
-                && this.tcpFlags == util.SYNACK;
+                && (this.tcpFlags & util.SYN) != 0
+                && (this.tcpFlags & util.ACK_BYTE) !=0;
     }
 
     public boolean isValid(TcpControlBlock tcb, int expectedFlags){
 
-        boolean check = this.tcpFlags == expectedFlags
-                && this.destinationPort == tcb.tcb_our_port
-                && this.destinationIP == tcb.tcb_our_ip_address
-                ;
+        boolean check = this.destinationPort == tcb.tcb_our_port
+                && this.destinationIP == tcb.tcb_our_ip_address;
 
         switch (expectedFlags){
             case util.SYN:
+                check = check
+                        &&(this.tcpFlags & util.SYN_BYTE)!=0;
                 break;
 
             case util.SYNACK:
 
                 check = check
+                        &&(this.tcpFlags & util.SYN_BYTE)!=0
+                        &&(this.tcpFlags & util.ACK_BYTE)!=0
                         && this.ackNumber == tcb.tcb_our_expected_ack
                         && this.sourceIP == tcb.tcb_their_ip_address
                         && this.sourcePort == tcb.tcb_their_port;
@@ -200,7 +204,8 @@ public class TCPSegment {
                         && this.ackNumber == tcb.tcb_our_expected_ack
                         && this.sourceIP == tcb.tcb_their_ip_address
                         && this.sourcePort == tcb.tcb_their_port
-                        && this.sequenceNumber == tcb.tcb_their_sequence_num;
+                        && this.sequenceNumber == tcb.tcb_their_sequence_num
+                        &&(this.tcpFlags & util.ACK_BYTE)!=0;
 
                 break;
 
