@@ -11,22 +11,17 @@ import nl.vu.cs.cn.util.util;
  */
 public class TCPSegment {
 
-    static int PSEUDO_LENGTH = 12;
     static short TCP_PROTOCOL = 6;
-    static int SRC_ADDRESS = 0;
-    static int DST_ADDRESS = 4;
-    static int PRTCL = 8;
-    static int LGTH = 10;
 
     static int SRC_PORT = 0;
     static int DST_PORT = 2;
     static int SEQ_NO = 4;
     static int ACK_NO = 8;
-    static int UNUSED1 = 12;
+    static int HLEN = 12;
     static int FLAGS = 13;
     static int WIN = 14;
     static int CHECKSUM = 16;
-    static int UNUSED2 = 18;
+    static int URG = 18;
     static int DATA = 20;
 
 
@@ -35,8 +30,11 @@ public class TCPSegment {
     short destinationPort;
     int sequenceNumber;
     int ackNumber;
+    byte dataOffset;
     byte tcpFlags;
+    short window;
     short checksum;
+    short urgentPointer;
     int length;
     byte[] data;
     int sourceIP;
@@ -51,8 +49,11 @@ public class TCPSegment {
         this.destinationPort = buffer.getShort(DST_PORT);
         this.sequenceNumber = buffer.getInt(SEQ_NO);
         this.ackNumber = buffer.getInt(ACK_NO);
+        this.dataOffset = buffer.get(HLEN);
         this.tcpFlags = buffer.get(FLAGS);
+        this.window = buffer.getShort(WIN);
         this.checksum = buffer.getShort(CHECKSUM);
+        this.urgentPointer = buffer.getShort(URG);
         this.data = new byte[pck.length-DATA];
         if (this.data.length > 0) {
             System.arraycopy(pck.data, DATA, this.data, 0, this.data.length);
@@ -68,8 +69,11 @@ public class TCPSegment {
         this.destinationPort = tcb.tcb_their_port;
         this.sequenceNumber = tcb.tcb_our_sequence_number;
         this.ackNumber = tcb.tcb_their_sequence_num;
+        this.dataOffset = (byte)80;
         this.tcpFlags = tcpFlags;
+        this.window = (short)1;
         this.checksum = 0;
+        this.urgentPointer = (short)0;
         this.data = data;
         this.length = DATA + data.length;
         this.sourceIP = tcb.tcb_our_ip_address;
@@ -130,11 +134,11 @@ public class TCPSegment {
         buffer.putShort(DST_PORT, this.destinationPort);
         buffer.putInt(SEQ_NO, this.sequenceNumber);
         buffer.putInt(ACK_NO, this.ackNumber);
-        buffer.put(UNUSED1, (byte) 0);
+        buffer.put(HLEN, this.dataOffset);
         buffer.put(FLAGS, this.tcpFlags);
-        buffer.putShort(WIN, (short) 1);
+        buffer.putShort(WIN, this.window);
         buffer.putShort(CHECKSUM, this.checksum);
-        buffer.putShort(UNUSED2, (short)0);
+        buffer.putShort(URG, this.urgentPointer);
 
         System.arraycopy(buffer.array(), 0, dst, offset, this.length);
         if (this.data.length > 0){
@@ -143,6 +147,10 @@ public class TCPSegment {
     }
 
     public boolean hasValidChecksum(){
+        boolean checksumIsValid = this.computeChecksum() == 0;
+        if (!checksumIsValid){
+            Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(this.destinationIP)), "Invalid Checksum: " + this.computeChecksum());
+        }
         return this.computeChecksum() == 0;
     }
 
@@ -214,7 +222,8 @@ public class TCPSegment {
         }
 
         if(!check){
-            Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)), "Invalid Segment: " + this.toString());
+            Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)), "Invalid Segment: " + this.toString() +
+                    " expected: seqNo: " + tcb.tcb_their_sequence_num + ", ackNo: " + tcb.tcb_our_expected_ack + ", flags: " + expectedFlags);
         }
 
         return check;
@@ -225,7 +234,12 @@ public class TCPSegment {
     public String toString(){
 //        return "sourcePort: " + IP.IpAddress.htoa(this.sourcePort) + " destinationPort: " + IP.IpAddress.htoa(this.destinationPort) +
 
-        return " sequenceNumber: " + this.sequenceNumber%100 + " ackNumber: " + this.ackNumber%100 +
-                " tcpFlags: " + this.tcpFlags + " checksum: " + this.checksum + " data: " + new String(this.data) + " length: " + this.length;
+        return "\n" +
+                this.sourcePort + " " + this.destinationPort + "\n" +
+                this.sequenceNumber + "\n" +
+                this.ackNumber + "\n" +
+                this.dataOffset + " " + this.tcpFlags + " " + this.window + "\n" +
+                this.checksum + " " + this.urgentPointer + "\n" +
+                new String(this.data);
     }
 }
