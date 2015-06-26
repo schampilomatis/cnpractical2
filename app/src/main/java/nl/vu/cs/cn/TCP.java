@@ -367,18 +367,11 @@ public class TCP {
                             if (receivedSegment.hasValidChecksum()) {
                                 if (receivedSegment.isFIN(tcb)) {
                                     receivedFIN(receivedSegment);
-                                    attempts++;
-                                }else if (receivedSegment.isPreviousSYNACK(tcb)){
-                                    attempts ++;
+
                                 }else if (receivedSegment.isValid(tcb, expectedFlags)) {
                                     return receivedSegment;
                                 }
-                            } else {
-
-                                attempts++;
-
                             }
-
 
                         } catch (Exception e) {
 
