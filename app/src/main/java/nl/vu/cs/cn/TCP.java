@@ -408,7 +408,7 @@ public class TCP {
                             }
 
                         } catch (Exception e) {
-
+                            segment.refresh_SEQ_ACK(tcb);
                             resend = true;
                             attempts++;
                         }

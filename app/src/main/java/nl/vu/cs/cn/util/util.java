@@ -7,7 +7,7 @@ public class util {
     static final public byte SYN=10;
     static final public byte SYNACK=18;
     static final public byte DATA=24;
-    static final public byte FIN=9;
+    static final public byte FIN=25;
 
 
     static final public int MAX_ATTEMPTS=10;

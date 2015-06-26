@@ -86,8 +86,9 @@ public class TCPSegment {
         return this.length;
     }
 
-    public void setChecksum(short checksum){
-        this.checksum = checksum;
+    public void refresh_SEQ_ACK(TcpControlBlock tcb){
+        this.sequenceNumber = tcb.tcb_our_sequence_number;
+        this.ackNumber = tcb.tcb_their_sequence_num;
     }
 
     public short computeChecksum(){
