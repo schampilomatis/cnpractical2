@@ -96,10 +96,7 @@ public class TCPSegment {
         byte[] raw = new byte[total_length];
         this.toArray(raw, 0);
         ByteBuffer rawBuf = ByteBuffer.wrap(raw);
-//        rawBuf.putInt(SRC_ADDRESS,this.sourceIP);
-//        rawBuf.putInt(DST_ADDRESS, this.destinationIP);
-//        rawBuf.putShort(PRTCL, TCP_PROTOCOL);
-//        rawBuf.putShort(LGTH, (short) this.length);
+
 
         long sum = 0;
 

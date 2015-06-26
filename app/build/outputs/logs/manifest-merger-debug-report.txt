@@ -61,9 +61,3 @@ category#android.intent.category.LAUNCHER
 ADDED from AndroidManifest.xml:28:17
 	android:name
 		ADDED from AndroidManifest.xml:28:27
-activity#nl.vu.cs.cn.MainActivity
-ADDED from AndroidManifest.xml:31:9
-	android:label
-		ADDED from AndroidManifest.xml:33:13
-	android:name
-		ADDED from AndroidManifest.xml:32:13

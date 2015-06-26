@@ -130,7 +130,8 @@ public class TCP {
         public int read(byte[] buf, int offset, int maxlen) {
 
             if (tcb.tcb_state != TcpControlBlock.ConnectionState.ESTABLISHED
-                    && tcb.tcb_state != TcpControlBlock.ConnectionState.READ_ONLY){
+                    && tcb.tcb_state != TcpControlBlock.ConnectionState.FIN_WAIT1
+                    && tcb.tcb_state != TcpControlBlock.ConnectionState.FIN_WAIT_2){
                 return -1;
             }
             int start = offset;
@@ -199,7 +200,7 @@ public class TCP {
         public int write(byte[] buf, int offset, int len) {
 
             if (tcb.tcb_state != TcpControlBlock.ConnectionState.ESTABLISHED
-                && tcb.tcb_state != TcpControlBlock.ConnectionState.WRITE_ONLY){
+                && tcb.tcb_state != TcpControlBlock.ConnectionState.CLOSE_WAIT){
                 return -1;
             }
             tcb.tcb_data_left = len;
@@ -244,21 +245,34 @@ public class TCP {
 
             if (tcb.tcb_state == TcpControlBlock.ConnectionState.ESTABLISHED){
                 tcb.tcb_our_expected_ack ++;
-                tcb.tcb_state = TcpControlBlock.ConnectionState.READ_ONLY;
+                tcb.tcb_state = TcpControlBlock.ConnectionState.FIN_WAIT1;
                 TCPSegment ack = sendFIN();
                 while (ack == null){
                     ack = sendFIN();
                 }
+                if (tcb.tcb_state == TcpControlBlock.ConnectionState.FIN_WAIT1) {
+                    tcb.tcb_state = TcpControlBlock.ConnectionState.FIN_WAIT_2;
 
-
-                tcb.tcb_our_sequence_number++;
-
+                    tcb.tcb_our_sequence_number++;
+                } else if (tcb.tcb_state == TcpControlBlock.ConnectionState.CLOSING){
+                    tcb.tcb_state = TcpControlBlock.ConnectionState.TIME_WAIT;
+                    new java.util.Timer().schedule(
+                            new java.util.TimerTask() {
+                                @Override
+                                public void run() {
+                                    terminate();
+                                }
+                            },
+                            5000
+                    );
+                }
                 return true;
 
 
-            }else if (tcb.tcb_state == TcpControlBlock.ConnectionState.WRITE_ONLY){
+            }else if (tcb.tcb_state == TcpControlBlock.ConnectionState.CLOSE_WAIT){
                 tcb.tcb_our_expected_ack ++;
                 TCPSegment ack = sendFIN();
+                tcb.tcb_state = TcpControlBlock.ConnectionState.LAST_ACK;
                 while (ack == null){
                     ack = sendFIN();
                 }
@@ -302,6 +316,7 @@ public class TCP {
 
             int offset = sgmt.data.length == 0 ? 1: sgmt.data.length;
             tcb.tcb_their_sequence_num = sgmt.sequenceNumber + offset;
+
             TCPSegment ack = new TCPSegment(tcb, util.DATA, new byte[0]);
             try {
                 sendSegment(ack , tcb);
@@ -317,6 +332,7 @@ public class TCP {
             TCPSegment fin = new TCPSegment(tcb, util.FIN, new byte[0]);
             try{
                 TCPSegment ack =  send(fin, util.DATA);
+
                 return ack;
             }catch(Exception e){
                 return null;
@@ -325,12 +341,13 @@ public class TCP {
 
         private void receivedFIN(TCPSegment fin){
             if (tcb.tcb_state == TcpControlBlock.ConnectionState.ESTABLISHED) {
-                tcb.tcb_state = TcpControlBlock.ConnectionState.WRITE_ONLY;
+                tcb.tcb_state = TcpControlBlock.ConnectionState.CLOSE_WAIT;
                 Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)) , "Received FIN in ESTABLISHED sending ack");
                 sendACK(fin);
-            }else if (tcb.tcb_state == TcpControlBlock.ConnectionState.READ_ONLY){
-                Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)) , "Received FIN in READ ONLY sending ack");
+            }else if (tcb.tcb_state == TcpControlBlock.ConnectionState.FIN_WAIT_2){
+                Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)), "Received FIN in READ ONLY sending ack");
                 sendACK(fin);
+                tcb.tcb_state = TcpControlBlock.ConnectionState.TIME_WAIT;
 
                 new java.util.Timer().schedule(
                         new java.util.TimerTask() {
@@ -341,6 +358,23 @@ public class TCP {
                         },
                         5000
                 );
+
+            } else if (tcb.tcb_state == TcpControlBlock.ConnectionState.FIN_WAIT1) {
+                if ((fin.tcpFlags & util.ACK_BYTE) !=0){
+                    tcb.tcb_state = TcpControlBlock.ConnectionState.TIME_WAIT;
+                    new java.util.Timer().schedule(
+                            new java.util.TimerTask() {
+                                @Override
+                                public void run() {
+                                    terminate();
+                                }
+                            },
+                            5000
+                    );
+
+                }
+                sendACK(fin);
+                tcb.tcb_state = TcpControlBlock.ConnectionState.CLOSING;
 
             }
         }
@@ -395,7 +429,9 @@ public class TCP {
         private TCPSegment receiveDataSegment(){
             int attempts = 0;
             while (attempts < util.MAX_ATTEMPTS
-                    &&(tcb.tcb_state== TcpControlBlock.ConnectionState.READ_ONLY|| tcb.tcb_state == TcpControlBlock.ConnectionState.ESTABLISHED)) {
+                    &&(tcb.tcb_state== TcpControlBlock.ConnectionState.FIN_WAIT1
+                    || (tcb.tcb_state == TcpControlBlock.ConnectionState.FIN_WAIT_2)
+                    || tcb.tcb_state == TcpControlBlock.ConnectionState.ESTABLISHED)) {
                 try {
                     TCPSegment datasgmt = receiveSegment(util.TIMEOUT);
                     if (datasgmt.hasValidChecksum()){
