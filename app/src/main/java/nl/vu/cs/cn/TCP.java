@@ -252,7 +252,6 @@ public class TCP {
                 }
                 if (tcb.tcb_state == TcpControlBlock.ConnectionState.FIN_WAIT1) {
                     tcb.tcb_state = TcpControlBlock.ConnectionState.FIN_WAIT_2;
-
                     tcb.tcb_our_sequence_number++;
                 } else if (tcb.tcb_state == TcpControlBlock.ConnectionState.CLOSING){
                     tcb.tcb_state = TcpControlBlock.ConnectionState.TIME_WAIT;
@@ -346,6 +345,7 @@ public class TCP {
                 sendACK(fin);
             }else if (tcb.tcb_state == TcpControlBlock.ConnectionState.FIN_WAIT_2){
                 Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)), "Received FIN in READ ONLY sending ack");
+
                 sendACK(fin);
                 tcb.tcb_state = TcpControlBlock.ConnectionState.TIME_WAIT;
 
@@ -360,6 +360,7 @@ public class TCP {
                 );
 
             } else if (tcb.tcb_state == TcpControlBlock.ConnectionState.FIN_WAIT1) {
+                tcb.tcb_our_sequence_number ++;
                 if ((fin.tcpFlags & util.ACK_BYTE) !=0){
                     tcb.tcb_state = TcpControlBlock.ConnectionState.TIME_WAIT;
                     new java.util.Timer().schedule(
@@ -376,6 +377,8 @@ public class TCP {
                 sendACK(fin);
                 tcb.tcb_state = TcpControlBlock.ConnectionState.CLOSING;
 
+            } else if (tcb.tcb_state == TcpControlBlock.ConnectionState.CLOSING){
+                sendACK(fin);
             }
         }
 
