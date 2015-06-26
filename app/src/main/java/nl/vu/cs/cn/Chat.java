@@ -12,9 +12,9 @@ import android.widget.TextView;
 public class Chat extends Activity {
 
 	final int MSG_LNGTH = 50;
-	final int UPPER_IP = 100;
+	final int UPPER_IP = 1;
 	final int UPPER_PORT = 2000;
-	final int LOWER_IP = 30;
+	final int LOWER_IP = 2;
 
 	TextView upperTextView, lowerTextView;
 	EditText upperEditText, lowerEditText;

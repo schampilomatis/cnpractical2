@@ -244,12 +244,13 @@ public class TCP {
 
             if (tcb.tcb_state == TcpControlBlock.ConnectionState.ESTABLISHED){
                 tcb.tcb_our_expected_ack ++;
+                tcb.tcb_state = TcpControlBlock.ConnectionState.READ_ONLY;
                 TCPSegment ack = sendFIN();
                 while (ack == null){
                     ack = sendFIN();
                 }
 
-                tcb.tcb_state = TcpControlBlock.ConnectionState.READ_ONLY;
+
                 tcb.tcb_our_sequence_number++;
 
                 return true;
@@ -259,8 +260,6 @@ public class TCP {
                 tcb.tcb_our_expected_ack ++;
                 TCPSegment ack = sendFIN();
                 while (ack == null){
-                    ack = sendFIN();
-                }while (ack == null){
                     ack = sendFIN();
                 }
 
@@ -300,6 +299,7 @@ public class TCP {
 
 
         private boolean sendACK(TCPSegment sgmt){
+
             int offset = sgmt.data.length == 0 ? 1: sgmt.data.length;
             tcb.tcb_their_sequence_num = sgmt.sequenceNumber + offset;
             TCPSegment ack = new TCPSegment(tcb, util.DATA, new byte[0]);
@@ -350,32 +350,37 @@ public class TCP {
         private TCPSegment send(TCPSegment segment, int expectedFlags){
 
             int attempts = 0;
-
+            boolean resend = true;
             while (attempts < util.MAX_ATTEMPTS) {
                 try {
                     if (tcb.ackReceivedfromRead == false) {
-                        sendSegment(segment, tcb);
+
+                        if (resend){
+                            sendSegment(segment, tcb);
+                            resend = false;
+
+                        }
+
                         try {
 
                             TCPSegment receivedSegment = receiveSegment(util.TIMEOUT);
-                            if (receivedSegment != null && receivedSegment.hasValidChecksum()) {
+                            if (receivedSegment.hasValidChecksum()) {
                                 if (receivedSegment.isFIN(tcb)) {
                                     receivedFIN(receivedSegment);
-                                    attempts++;
-                                } else if (receivedSegment.isValid(tcb, expectedFlags)) {
+
+                                }else if (receivedSegment.isValid(tcb, expectedFlags)) {
                                     return receivedSegment;
                                 }
-                            } else {
-                                attempts++;
                             }
 
-
                         } catch (Exception e) {
+
+                            resend = true;
                             attempts++;
                         }
                     }
                     else{
-                        tcb.ackReceivedfromRead = true;
+                        tcb.ackReceivedfromRead = false;
                         return new TCPSegment(tcb, util.DATA, new byte[0]);
                     }
 
@@ -409,8 +414,10 @@ public class TCP {
                             sendACK(datasgmt);
                             attempts ++;
                         }else if(datasgmt.isPreviousSYNACK(tcb)){
-                            sendACK(datasgmt);
-                            attempts++;
+                            if (tcb.tcb_state == TcpControlBlock.ConnectionState.SYN_SENT) {
+                                sendACK(datasgmt);
+                                attempts++;
+                            }
                         };
 
 
