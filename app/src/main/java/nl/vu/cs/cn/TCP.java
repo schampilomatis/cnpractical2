@@ -250,6 +250,7 @@ public class TCP {
                 while (ack == null){
                     ack = sendFIN();
                 }
+
                 if (tcb.tcb_state == TcpControlBlock.ConnectionState.FIN_WAIT1) {
                     tcb.tcb_state = TcpControlBlock.ConnectionState.FIN_WAIT_2;
                     tcb.tcb_our_sequence_number++;
@@ -412,6 +413,7 @@ public class TCP {
 
                         } catch (Exception e) {
                             segment.refresh_SEQ_ACK(tcb);
+                            segment.refresh_SEQ_ACK(tcb);
                             resend = true;
                             attempts++;
                         }
@@ -521,7 +523,7 @@ public class TCP {
      * @return a new socket for this stack
      */
     public Socket socket() {
-        int port = new Random().nextInt(util.MAX_PORT - util.MIN_PORT) + 1024;
+        int port = Math.abs(new Random().nextInt(util.MAX_PORT - util.MIN_PORT)) + 1024;
         return new Socket((short)port);
     }
 

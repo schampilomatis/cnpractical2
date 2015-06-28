@@ -93,6 +93,8 @@ public class TCPSegment {
     public void refresh_SEQ_ACK(TcpControlBlock tcb){
         this.sequenceNumber = tcb.tcb_our_sequence_number;
         this.ackNumber = tcb.tcb_their_sequence_num;
+        this.checksum = 0;
+        this.checksum = computeChecksum();
     }
 
     public short computeChecksum(){
@@ -154,7 +156,7 @@ public class TCPSegment {
         if (!checksumIsValid){
             Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(this.destinationIP)), "Invalid Checksum: " + this.computeChecksum());
         }
-        return this.computeChecksum() == 0;
+        return checksumIsValid;
     }
 
     public boolean isPreviousData(TcpControlBlock tcb){

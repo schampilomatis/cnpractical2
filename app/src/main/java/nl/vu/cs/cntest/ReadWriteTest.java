@@ -340,7 +340,7 @@ public class ReadWriteTest extends TestCase {
         assertEquals(0,server.bytesRead);
 
     }
-    public void testReadAfterClose () throws InterruptedException{
+    public void testReadAfterClose() throws InterruptedException{
 
         class Server implements Runnable {
 
@@ -373,12 +373,12 @@ public class ReadWriteTest extends TestCase {
                 }
             }
         }
-        Server server = new Server();
-        Thread serverThread = new Thread(server);
-        serverThread.start();
         Client client = new Client();
-        client.run();
-        serverThread.join();
+        Thread clientThread = new Thread(client);
+        clientThread.start();
+        Server server = new Server();
+        server.run();
+        clientThread.join();
         assertEquals(BYTES,client.bytesWritten);
         assertEquals("1234512345",new String(server.buf));
 
