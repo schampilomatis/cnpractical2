@@ -82,6 +82,10 @@ public class TCPSegment {
 
     }
 
+    public int getCheckSum(){
+        return this.checksum;
+    }
+
     public int length(){
         return this.length;
     }
