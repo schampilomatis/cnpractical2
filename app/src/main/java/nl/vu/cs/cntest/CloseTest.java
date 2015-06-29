@@ -37,7 +37,7 @@ public class CloseTest extends TestCase {
                     server.accept();
 
                     closed = server.close();
-                } catch (IOException e){
+                } catch (IOException ignored){
 
                 }
             }
@@ -53,7 +53,7 @@ public class CloseTest extends TestCase {
                     IP.IpAddress serverAddress = IP.IpAddress.getAddress("192.168.0." + SERVER_IP);
                     client.connect(serverAddress, SERVER_PORT);
                     closed = client.close();
-                } catch (IOException e) {
+                } catch (IOException ignored) {
 
                 }
             }
@@ -79,7 +79,7 @@ public class CloseTest extends TestCase {
                     TCP.Socket server = new TCP(SERVER_IP).socket(SERVER_PORT);
 
                     closed = server.close();
-                } catch (IOException e){
+                } catch (IOException ignored){
 
                 }
             }
@@ -93,7 +93,7 @@ public class CloseTest extends TestCase {
                 try {
                     TCP.Socket client = new TCP(CLIENT_IP).socket();
                     closed = client.close();
-                } catch (IOException e) {
+                } catch (IOException ignored) {
 
                 }
             }
@@ -122,7 +122,7 @@ public class CloseTest extends TestCase {
 
                     closed = server.close();
                     closed2 = server.close();
-                } catch (IOException e){
+                } catch (IOException ignored){
 
                 }
             }
@@ -140,7 +140,7 @@ public class CloseTest extends TestCase {
                     client.connect(serverAddress, SERVER_PORT);
                     closed = client.close();
                     closed2 = client.close();
-                } catch (IOException e) {
+                } catch (IOException ignored) {
 
                 }
             }
