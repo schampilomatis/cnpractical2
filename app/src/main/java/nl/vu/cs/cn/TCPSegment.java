@@ -13,6 +13,8 @@ public class TCPSegment {
 
     static short TCP_PROTOCOL = 6;
 
+
+    //the position of the tcp segment fields
     static int SRC_PORT = 0;
     static int DST_PORT = 2;
     static int SEQ_NO = 4;
@@ -43,6 +45,8 @@ public class TCPSegment {
 
     public TCPSegment(){}
 
+
+    //create a segment from an IP packet
     public TCPSegment(IP.Packet pck){
         ByteBuffer buffer = ByteBuffer.wrap(pck.data);
         this.sourcePort = buffer.getShort(SRC_PORT);
@@ -63,6 +67,8 @@ public class TCPSegment {
         this.destinationIP = Integer.reverseBytes(pck.destination);
     }
 
+
+    //create a new segment from tcb(connection info), flags and data
     public TCPSegment(TcpControlBlock tcb, byte tcpFlags,  byte[] data) {
 
         this.sourcePort = tcb.tcb_our_port;
@@ -82,21 +88,28 @@ public class TCPSegment {
 
     }
 
+    //getter for checksum (used for testing)
     public int getCheckSum(){
         return this.checksum;
     }
 
-    public int length(){
-        return this.length;
-    }
-
+    //function that refreshes the existing segment
     public void refresh_SEQ_ACK(TcpControlBlock tcb){
+
+        boolean changed = (this.sequenceNumber != tcb.tcb_our_sequence_number)
+                ||(this.ackNumber != tcb.tcb_their_sequence_num);
         this.sequenceNumber = tcb.tcb_our_sequence_number;
         this.ackNumber = tcb.tcb_their_sequence_num;
-        this.checksum = 0;
-        this.checksum = computeChecksum();
+
+        if (changed){ //if the segment was not changed we do no need to recompute checksum
+            this.checksum = 0;
+            this.checksum = computeChecksum();
+        }
     }
 
+
+    //returns checksum when segment.checksum = 0
+    //returns 0 when segment.checksum = checksum
     public short computeChecksum(){
 
         int total_length =  this.length;
@@ -131,6 +144,7 @@ public class TCPSegment {
 
     }
 
+    //converts segment to Array for sending
     public void toArray(byte[] dst , int offset){
 
         ByteBuffer buffer = ByteBuffer.allocate(this.length);
@@ -151,6 +165,8 @@ public class TCPSegment {
         }
     }
 
+
+    //check if received segment's checksum is valid
     public boolean hasValidChecksum(){
         boolean checksumIsValid = this.computeChecksum() == 0;
         if (!checksumIsValid){
@@ -159,35 +175,88 @@ public class TCPSegment {
         return checksumIsValid;
     }
 
+
+    //check if received segment is previousData
     public boolean isPreviousData(TcpControlBlock tcb){
-        return  this.destinationPort == tcb.tcb_our_port
+        boolean check =  this.destinationPort == tcb.tcb_our_port
                 && this.destinationIP == tcb.tcb_our_ip_address
                 && this.ackNumber == tcb.tcb_our_expected_ack
                 && this.sourceIP == tcb.tcb_their_ip_address
                 && this.sourcePort == tcb.tcb_their_port
-                && this.sequenceNumber == tcb.tcb_their_sequence_num - length
+                && this.sequenceNumber == (tcb.tcb_their_sequence_num - this.data.length)
                 &&(this.tcpFlags & util.ACK_BYTE)!=0;
+
+        if (check){
+            Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(this.destinationIP)), "PREVIOUS DATA FOUND");
+        }
+
+        return check;
     }
 
+    //check if received segment is FIN
     public boolean isFIN(TcpControlBlock tcb){
-        return this.destinationPort == tcb.tcb_our_port
+        boolean check = this.destinationPort == tcb.tcb_our_port
                 && this.destinationIP == tcb.tcb_our_ip_address
                 && this.sourceIP == tcb.tcb_their_ip_address
                 && this.sourcePort == tcb.tcb_their_port
                 && this.sequenceNumber == tcb.tcb_their_sequence_num
                 && (this.tcpFlags & util.FIN_BYTE) != 0;
+        if (check){
+            Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(this.destinationIP)), "FIN FOUND");
+        }
+
+        return check;
     }
 
-    public boolean isPreviousSYNACK(TcpControlBlock tcb){
-        return this.destinationPort == tcb.tcb_our_port
+    //check if received segment is PREVIOUS FIN
+    public boolean isPreviousFin(TcpControlBlock tcb){
+        boolean check = this.destinationPort == tcb.tcb_our_port
                 && this.destinationIP == tcb.tcb_our_ip_address
                 && this.sourceIP == tcb.tcb_their_ip_address
                 && this.sourcePort == tcb.tcb_their_port
-                && this.sequenceNumber == tcb.tcb_their_sequence_num -1
-                && (this.tcpFlags & util.SYN) != 0
-                && (this.tcpFlags & util.ACK_BYTE) !=0;
+                && this.sequenceNumber == (tcb.tcb_their_sequence_num - 1)
+                && (this.tcpFlags & util.FIN_BYTE) != 0;
+
+        if (check){
+            Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(this.destinationIP)), "PREVIOUS FIN FOUND");
+        }
+
+        return check;
     }
 
+
+    //check if received segment is PREVIOUS SYNACK
+    public boolean isPreviousSYNACK(TcpControlBlock tcb){
+        boolean check =  this.destinationPort == tcb.tcb_our_port
+                && this.destinationIP == tcb.tcb_our_ip_address
+                && this.sourceIP == tcb.tcb_their_ip_address
+                && this.sourcePort == tcb.tcb_their_port
+                && this.sequenceNumber == (tcb.tcb_their_sequence_num - 1)
+                && (this.tcpFlags & util.SYN_BYTE) != 0
+                && (this.tcpFlags & util.ACK_BYTE) !=0;
+        if (check){
+            Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(this.destinationIP)), "PREVIOUS SYNACK FOUND");
+        }
+
+        return check;
+    }
+
+    //check if received segment is PREVIOUS SYN
+    public boolean isPreviousSYN(TcpControlBlock tcb){
+        boolean check = this.destinationPort == tcb.tcb_our_port
+                && this.destinationIP == tcb.tcb_our_ip_address
+                && this.sourceIP == tcb.tcb_their_ip_address
+                && this.sourcePort == tcb.tcb_their_port
+                && this.sequenceNumber == (tcb.tcb_their_sequence_num - 1)
+                && (this.tcpFlags & util.SYN_BYTE) != 0;
+        if (check){
+            Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(this.destinationIP)), "PREVIOUS SYN FOUND");
+        }
+
+        return check;
+    }
+
+    //check if received segment is a new valid segment with the expected flags
     public boolean isValid(TcpControlBlock tcb, int expectedFlags){
 
         boolean check = this.destinationPort == tcb.tcb_our_port
@@ -227,7 +296,7 @@ public class TCPSegment {
         }
 
         if(!check){
-            Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)), "Invalid Segment: " + this.toString() +
+            Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)), "Invalid Segment: " + this.toString() + "\n" +
                     " expected: seqNo: " + tcb.tcb_their_sequence_num + ", ackNo: " + tcb.tcb_our_expected_ack + ", flags: " + expectedFlags);
         }
 
@@ -236,6 +305,8 @@ public class TCPSegment {
 
     }
 
+
+    //string represantation of a segment for logging
     public String toString(){
 //        return "sourcePort: " + IP.IpAddress.htoa(this.sourcePort) + " destinationPort: " + IP.IpAddress.htoa(this.destinationPort) +
 
@@ -245,6 +316,6 @@ public class TCPSegment {
                 this.ackNumber + "\n" +
                 this.dataOffset + " " + this.tcpFlags + " " + this.window + "\n" +
                 this.checksum + " " + this.urgentPointer + "\n" +
-                new String(this.data);
+                "DATA OF LENGTH " + this.data.length ;
     }
 }

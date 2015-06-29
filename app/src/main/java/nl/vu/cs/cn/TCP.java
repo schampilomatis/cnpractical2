@@ -16,7 +16,6 @@ public class TCP {
 
 	/** The underlying IP stack for this TCP stack. */
     private IP ip;
-
     /**
      * This class represents a TCP socket.
      *
@@ -30,12 +29,14 @@ public class TCP {
     	/**
     	 * Construct a client socket.
     	 */
-
+        //contains all the information for the socket connection
         private TcpControlBlock tcb;
 
     	private Socket(short port) {
 
             tcb = new TcpControlBlock();
+
+            // Initializing tcb with our values
             tcb.tcb_our_ip_address = Integer.reverseBytes(ip.getLocalAddress().getAddress());
             tcb.tcb_our_port = port;
             tcb.tcb_state = TcpControlBlock.ConnectionState.CLOSED;
@@ -53,21 +54,24 @@ public class TCP {
          */
         public boolean connect(IpAddress dst, int portInt) {
 
-            // Implement the connection side of the three-way handshake here.
+
             short port = (short)portInt;
+
+            //Cannot connect from a non-Closed socket
             if (tcb.tcb_state != TcpControlBlock.ConnectionState.CLOSED){
                 return false;
             }
 
 
-
+            //send SYN - expect SYNACK
             TCPSegment synack = sendSYN(dst, port);
 
+            //synack = null means that sending SYN failed 10 times
             if (synack != null){
                 if (sendACK(synack)){
                     tcb.tcb_state = TcpControlBlock.ConnectionState.ESTABLISHED;
                     return true;
-                };
+                }
 
                 return false;
             }
@@ -82,30 +86,44 @@ public class TCP {
          */
         public void accept() {
 
-            // Implement the receive side of the three-way handshake here.
+
             Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)) , "ACCEPTING CONNECTIONS");
 
             tcb.tcb_state = TcpControlBlock.ConnectionState.LISTEN;
             try {
                 while(true) {
-
+                    //receive a segment without timeout(0) blocking the socket
                     TCPSegment syn = receiveSegment(0);
 
                     if (syn.isValid(tcb, util.SYN)) {
 
                         tcb.tcb_state = TcpControlBlock.ConnectionState.SYN_RCVD;
+
+                        //Initializing the values of tcb with those found in the SYN segment
                         tcb.tcb_their_ip_address = syn.sourceIP;
                         tcb.tcb_their_port = syn.sourcePort;
-                        tcb.tcb_our_sequence_number = new Random().nextInt();
                         tcb.tcb_their_sequence_num = syn.sequenceNumber + 1;
+
+
+
+
+                        //Random int for initial sequence number
+                        tcb.tcb_our_sequence_number = new Random().nextInt();
                         tcb.tcb_our_expected_ack = tcb.tcb_our_sequence_number + 1;
+
+                        //send SYNACK segment expecting for an ACK (util.DATA flags)
                         TCPSegment synack = new TCPSegment(tcb, util.SYNACK, new byte[0]);
-                        TCPSegment ack = send(synack, util.DATA);
-                        if (ack != null) {
-                            tcb.tcb_state = TcpControlBlock.ConnectionState.ESTABLISHED;
-                            tcb.tcb_our_sequence_number ++;
-                            break;
-                        }
+                        send(synack, util.DATA);
+
+
+                        tcb.tcb_state = TcpControlBlock.ConnectionState.ESTABLISHED;
+
+                        //increase seq number by one. SYNACK length counts as 1 althought there are no data
+                        tcb.tcb_our_sequence_number ++;
+                        break;
+
+
+
                     }
 
                 }
@@ -129,24 +147,36 @@ public class TCP {
          */
         public int read(byte[] buf, int offset, int maxlen) {
 
+            //Can only read from ESTABLISHED, FIN_WAIT1, FIN_WAIT_2
             if (tcb.tcb_state != TcpControlBlock.ConnectionState.ESTABLISHED
                     && tcb.tcb_state != TcpControlBlock.ConnectionState.FIN_WAIT1
                     && tcb.tcb_state != TcpControlBlock.ConnectionState.FIN_WAIT_2){
                 return -1;
             }
+
+            //initializing the start(where to store next) and dataleft(how many more bytes) values
             int start = offset;
             int dataleft = maxlen;
+
+            //moving unread bytes from previous calls of read
             int dataFromBuffer = readFromBuffer(buf, offset, maxlen);
             start += dataFromBuffer;
             dataleft -= dataFromBuffer;
 
+
             while (dataleft > 0){
+
+                //receive one segment (10 tries)
                 TCPSegment dataSgmt = receiveDataSegment();
                 if (dataSgmt != null) {
                     if (dataSgmt.data.length > dataleft) {
+
+                        //extra bytes are copied to the buffer for next calls of read
                         System.arraycopy(dataSgmt.data, 0, buf, start, dataleft);
                         byte[] receivedBuf = new byte[dataSgmt.data.length - dataleft];
                         System.arraycopy(dataSgmt.data, dataleft, receivedBuf, 0, dataSgmt.data.length - dataleft );
+
+                        //the buffer reference is kept inside tcb
                         tcb.tcb_received_data = receivedBuf;
                         dataleft = 0;
 
@@ -156,7 +186,7 @@ public class TCP {
                         dataleft -= readBytesLen;
                         start += readBytesLen;
                     }
-                }else{
+                }else{// return after 10 fails of receiveDataSegment
                     return maxlen - dataleft;
                 }
             }
@@ -166,6 +196,12 @@ public class TCP {
 
         }
 
+
+
+//      function that:
+//      transfers the previous read extra bytes to the buf
+//      decreases the size of the buffer or it reinitializes it removing the bytes transfered
+//      returns the number of bytes transfered
         private int readFromBuffer(byte[] buf, int offset, int maxlen){
 
             int undeliveredDataLength = tcb.tcb_received_data.length;
@@ -199,14 +235,20 @@ public class TCP {
          */
         public int write(byte[] buf, int offset, int len) {
 
+
+//            return -1 in case of wrong state
             if (tcb.tcb_state != TcpControlBlock.ConnectionState.ESTABLISHED
                 && tcb.tcb_state != TcpControlBlock.ConnectionState.CLOSE_WAIT){
                 return -1;
             }
+
             tcb.tcb_data_left = len;
             int start = offset;
             while (tcb.tcb_data_left > 0){
                 int sgmt_len;
+
+                //the length of a the segment data is the minimum of max data for a segment and the
+                //data left to send
                 if (tcb.tcb_data_left > util.MAX_DATA_LEN){
                     sgmt_len = util.MAX_DATA_LEN;
                 }else{
@@ -243,19 +285,24 @@ public class TCP {
          */
         public boolean close() {
 
+            // close() called first on our socket
             if (tcb.tcb_state == TcpControlBlock.ConnectionState.ESTABLISHED){
-                tcb.tcb_our_expected_ack ++;
+                tcb.tcb_our_expected_ack ++;// increase expected ack by 1 because of FIN
                 tcb.tcb_state = TcpControlBlock.ConnectionState.FIN_WAIT1;
-                TCPSegment ack = sendFIN();
-                while (ack == null){
-                    ack = sendFIN();
-                }
+                sendFIN(); //send fin 10 times until acknowledged
+
 
                 if (tcb.tcb_state == TcpControlBlock.ConnectionState.FIN_WAIT1) {
                     tcb.tcb_state = TcpControlBlock.ConnectionState.FIN_WAIT_2;
-                    tcb.tcb_our_sequence_number++;
-                } else if (tcb.tcb_state == TcpControlBlock.ConnectionState.CLOSING){
+                    tcb.tcb_our_sequence_number++; //increase our sequence number because of the FIN sent
+                }
+
+
+                //FIN received while waiting for our FIN acknowledgement(simultaneous close)
+                else if (tcb.tcb_state == TcpControlBlock.ConnectionState.CLOSING){
                     tcb.tcb_state = TcpControlBlock.ConnectionState.TIME_WAIT;
+
+                    //terminate the connection after TIME_WAIT ms
                     new java.util.Timer().schedule(
                             new java.util.TimerTask() {
                                 @Override
@@ -263,47 +310,66 @@ public class TCP {
                                     terminate();
                                 }
                             },
-                            5000
+                            util.TIME_WAIT
                     );
                 }
                 return true;
 
 
-            }else if (tcb.tcb_state == TcpControlBlock.ConnectionState.CLOSE_WAIT){
-                tcb.tcb_our_expected_ack ++;
-                TCPSegment ack = sendFIN();
-                tcb.tcb_state = TcpControlBlock.ConnectionState.LAST_ACK;
-                while (ack == null){
-                    ack = sendFIN();
-                }
+            }
 
+            //close() called first on their socket
+            else if (tcb.tcb_state == TcpControlBlock.ConnectionState.CLOSE_WAIT){
+                tcb.tcb_our_expected_ack ++;
+                sendFIN();
+                tcb.tcb_state = TcpControlBlock.ConnectionState.LAST_ACK;
                 tcb.tcb_our_sequence_number++;
 
+                //terminate without waiting
                 terminate();
                 return true;
 
             }
 
+
+
             return false;
         }
 
+
+//      function that:
+//      sends SYN to an IP address, port
+//      retuns SYNACK
+
+
         private TCPSegment sendSYN(IP.IpAddress dst, short port){
+
+
+            tcb.tcb_state = TcpControlBlock.ConnectionState.SYN_SENT;
+
+            // inintialize tcb values
             tcb.tcb_their_ip_address = Integer.reverseBytes(dst.getAddress());
             tcb.tcb_their_port = port;
-            tcb.tcb_state = TcpControlBlock.ConnectionState.SYN_SENT;
+            tcb.tcb_their_sequence_num = 0;
+
+            //random initial seq number
             int initialSeqNumber = new Random().nextInt();
             tcb.tcb_our_sequence_number = initialSeqNumber;
-            tcb.tcb_their_sequence_num = 0;
+
+            //expected ack = seq number + 1 because of SYN segment
             tcb.tcb_our_expected_ack = initialSeqNumber + 1;
             TCPSegment syn = new TCPSegment(tcb, util.SYN , new byte[0]);
 
             Log.i("IP: " + Integer.reverseBytes(tcb.tcb_our_ip_address), "CONNECTING TO IP: " + Integer.reverseBytes(tcb.tcb_their_ip_address));
 
+            //send SYN 10 times until we receive SYNACK
             TCPSegment synack = send(syn, util.SYNACK);
 
             if (synack != null){
+
                 tcb.tcb_state = TcpControlBlock.ConnectionState.SYN_RCVD;
                 tcb.tcb_our_sequence_number ++;
+                //initialize their sequence number
                 tcb.tcb_their_sequence_num = synack.sequenceNumber ;
             }
 
@@ -311,12 +377,24 @@ public class TCP {
 
         }
 
-
+//        function that sends ACK for a given segment
+//        returns true for successful sending
+//        sets their sequence number
         private boolean sendACK(TCPSegment sgmt){
 
-            int offset = sgmt.data.length == 0 ? 1: sgmt.data.length;
+//          the increase in sequence number is equal to data.length but is equal to 1 for SYNACK and FIN segments
+            int offset;
+            int datalength = sgmt.data.length;
+            if (sgmt.data.length == 0){
+                offset = 1;
+            }else{
+                offset = datalength;
+            }
+
+//          increase sequence number or set it back to the same number if the ack was for a previous segment
             tcb.tcb_their_sequence_num = sgmt.sequenceNumber + offset;
 
+//          create and send ACK
             TCPSegment ack = new TCPSegment(tcb, util.DATA, new byte[0]);
             try {
                 sendSegment(ack , tcb);
@@ -328,23 +406,30 @@ public class TCP {
 
         }
 
+
+//        Function that sends FIN (up to 10 times) and expects ACK
         private TCPSegment sendFIN(){
             TCPSegment fin = new TCPSegment(tcb, util.FIN, new byte[0]);
             try{
-                TCPSegment ack =  send(fin, util.DATA);
-
-                return ack;
+                return  send(fin, util.DATA);
             }catch(Exception e){
                 return null;
             }
         }
 
+
+//        Function called whenever FIN is received
         private void receivedFIN(TCPSegment fin){
+
+//            Received fin in ESTABLISHED(first one to receive)
             if (tcb.tcb_state == TcpControlBlock.ConnectionState.ESTABLISHED) {
                 tcb.tcb_state = TcpControlBlock.ConnectionState.CLOSE_WAIT;
                 Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)) , "Received FIN in ESTABLISHED sending ack");
                 sendACK(fin);
-            }else if (tcb.tcb_state == TcpControlBlock.ConnectionState.FIN_WAIT_2){
+            }
+
+//            Received fin in FIN_WAIT_2 (second one to receive)
+            else if (tcb.tcb_state == TcpControlBlock.ConnectionState.FIN_WAIT_2){
                 Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)), "Received FIN in READ ONLY sending ack");
 
                 sendACK(fin);
@@ -360,8 +445,14 @@ public class TCP {
                         5000
                 );
 
-            } else if (tcb.tcb_state == TcpControlBlock.ConnectionState.FIN_WAIT1) {
+            }
+//            Received fin in FIN_WAIT_1 (simultaneous close)
+            else if (tcb.tcb_state == TcpControlBlock.ConnectionState.FIN_WAIT1) {
+
+                //increasing our sequence number here in order to send the correct sequence number in the ACK segment
                 tcb.tcb_our_sequence_number ++;
+
+                //FINACK received
                 if ((fin.tcpFlags & util.ACK_BYTE) !=0){
                     tcb.tcb_state = TcpControlBlock.ConnectionState.TIME_WAIT;
                     new java.util.Timer().schedule(
@@ -378,22 +469,29 @@ public class TCP {
                 sendACK(fin);
                 tcb.tcb_state = TcpControlBlock.ConnectionState.CLOSING;
 
-            } else if (tcb.tcb_state == TcpControlBlock.ConnectionState.CLOSING){
-                sendACK(fin);
             }
         }
 
 
 
+
+
+//        Function that sends a segment expecting a response(it can be either ACK or SYNACK)
+//        Up to 10 attempts
+//        handles receiving previous segments
+//        returns the response
         private TCPSegment send(TCPSegment segment, int expectedFlags){
 
             int attempts = 0;
+            //variable that determines when the segment has to be resent
+            //the segment is resent in case of invalid ckecksum or no response
             boolean resend = true;
             while (attempts < util.MAX_ATTEMPTS) {
                 try {
-                    if (tcb.ackReceivedfromRead == false) {
+                    if (!tcb.ackReceivedfromRead) {
 
                         if (resend){
+                            //send the Segment
                             sendSegment(segment, tcb);
                             resend = false;
 
@@ -402,16 +500,26 @@ public class TCP {
                         try {
 
                             TCPSegment receivedSegment = receiveSegment(util.TIMEOUT);
-                            if (receivedSegment.hasValidChecksum()) {
-                                if (receivedSegment.isFIN(tcb)) {
+                            if (receivedSegment.hasValidChecksum()) { //check checksum
+                                if (receivedSegment.isFIN(tcb)) { //received fin instead of ACK/SYNACK
                                     receivedFIN(receivedSegment);
-
-                                }else if (receivedSegment.isValid(tcb, expectedFlags)) {
+                                }else if (receivedSegment.isValid(tcb, expectedFlags)) { //valid response
                                     return receivedSegment;
+                                }else if (isPreviousNonSYN(receivedSegment)){ //previous non SYN segment
+                                    sendACK(receivedSegment);
+                                }else if (receivedSegment.isPreviousSYN(tcb)){
+                                    resend = true; //the only way to be here is when sending SYNACK
+                                    attempts++;
                                 }
+                            }else{
+
+                                resend = true;
+                                attempts++;
                             }
 
                         } catch (Exception e) {
+
+                            //have to refresh the segment after each resend because we might have received a FIN
                             segment.refresh_SEQ_ACK(tcb);
                             segment.refresh_SEQ_ACK(tcb);
                             resend = true;
@@ -419,6 +527,8 @@ public class TCP {
                         }
                     }
                     else{
+                        // we might receive ack for a segment sent in READ if we simultaneously read.
+                        // in that case we return a plain ACK.
                         tcb.ackReceivedfromRead = false;
                         return new TCPSegment(tcb, util.DATA, new byte[0]);
                     }
@@ -431,7 +541,14 @@ public class TCP {
             return null;
         }
 
+//        function that receives a Data segment
+//        returns the segment received
+//        handles receiving past segments
+//        sends acknowledgements for the segments received
+//        receives a segment with maximum 10 failures
+
         private TCPSegment receiveDataSegment(){
+
             int attempts = 0;
             while (attempts < util.MAX_ATTEMPTS
                     &&(tcb.tcb_state== TcpControlBlock.ConnectionState.FIN_WAIT1
@@ -439,27 +556,23 @@ public class TCP {
                     || tcb.tcb_state == TcpControlBlock.ConnectionState.ESTABLISHED)) {
                 try {
                     TCPSegment datasgmt = receiveSegment(util.TIMEOUT);
-                    if (datasgmt.hasValidChecksum()){
+                    if (datasgmt.hasValidChecksum()){ //validate checksum
 
-                        if (datasgmt.isFIN(tcb)){
+                        if (datasgmt.isFIN(tcb)){ //FIN instead of ACK
                             receivedFIN(datasgmt);
-                            break;
+                            attempts++;
                         }else if(datasgmt.isValid(tcb, util.DATA)){
-                            if (datasgmt.data.length == 0){
+                            if (datasgmt.data.length == 0){ // if data length is 0 we assume that we received an expected ACK
                                 tcb.ackReceivedfromRead = true;
-                            }else {
+                                attempts++;
+                            }else { //Valid Segment
                                 sendACK(datasgmt);
                                 return datasgmt;
                             }
-                        }else if(datasgmt.isPreviousData(tcb)){
+                        }else if (isPreviousNonSYN(datasgmt)){//previous segment received
                             sendACK(datasgmt);
-                            attempts ++;
-                        }else if(datasgmt.isPreviousSYNACK(tcb)){
-                            if (tcb.tcb_state == TcpControlBlock.ConnectionState.SYN_SENT) {
-                                sendACK(datasgmt);
-                                attempts++;
-                            }
-                        };
+                            attempts++;
+                        }
 
 
                     };
@@ -471,28 +584,40 @@ public class TCP {
             return null;
         }
 
+
+//      Function that checks for previous segments(SYN has to be handled seperately)
+        private boolean isPreviousNonSYN(TCPSegment sgmt){
+            return sgmt.isPreviousData(tcb)
+                || (sgmt.isPreviousSYNACK(tcb))
+                || (sgmt.isPreviousFin(tcb));
+        }
+//      Terminate the connection
         private void terminate(){
             tcb.tcb_state = TcpControlBlock.ConnectionState.CLOSED;
             tcb.clear();
         }
 
+
+
     }
 
-
+//  Convert a TCPSegment into IP packet and send
     private int sendSegment(TCPSegment tcpSeg,TcpControlBlock tcb) throws IOException{
 
         Log.i("IP: " + IP.IpAddress.htoa(Integer.reverseBytes(tcb.tcb_our_ip_address)), "send segment: " + tcpSeg.toString());
         int dstAddress = Integer.reverseBytes(tcb.tcb_their_ip_address);
         int packetID = new Random().nextInt();
-        byte[] data = new byte[tcpSeg.length()];
+        byte[] data = new byte[tcpSeg.length];
         tcpSeg.toArray(data, 0);
-        IP.Packet pck = new IP.Packet(dstAddress,IP. TCP_PROTOCOL, packetID, data, tcpSeg.length());
+        IP.Packet pck = new IP.Packet(dstAddress,IP. TCP_PROTOCOL, packetID, data, tcpSeg.length);
 
 
         return ip.ip_send(pck);
 
     }
 
+
+//  Receive an IP packet and convert to TCP Segment
     private TCPSegment receiveSegment(int timeout) throws IOException , InterruptedException{
 
         IP.Packet pck = new IP.Packet();

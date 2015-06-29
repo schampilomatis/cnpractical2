@@ -12,7 +12,7 @@ import nl.vu.cs.cn.util.util;
 /**
  * Created by nikos on 28-6-15.
  */
-public class testChecksum extends TestCase {
+public class ChecksumTest extends TestCase {
 
     public void testCheckSum (){
         TcpControlBlock tcb = new TcpControlBlock();

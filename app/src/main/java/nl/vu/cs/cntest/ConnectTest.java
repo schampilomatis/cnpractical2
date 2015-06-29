@@ -10,7 +10,7 @@ import nl.vu.cs.cn.TCP;
 /**
  * Created by nikos on 28-6-15.
  */
-public class connectTest extends TestCase {
+public class ConnectTest extends TestCase {
 
     public static int CLIENT_IP = 1;
 
@@ -58,7 +58,7 @@ public class connectTest extends TestCase {
 
 
 
-        public void testConnect() throws IOException, InterruptedException{
+    public void testConnect() throws IOException, InterruptedException{
 
 
 
@@ -117,6 +117,11 @@ public class connectTest extends TestCase {
         assertEquals(false, clientTask.connectSuccess);
         assertEquals(true,clientTask2.connectSuccess);
     }
+
+
+
+
+
 
 
 }

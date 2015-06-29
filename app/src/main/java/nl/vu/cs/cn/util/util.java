@@ -5,12 +5,13 @@ package nl.vu.cs.cn.util;
  */
 public class util {
     static final public byte SYN=10;
-    static final public byte SYNACK=18;
+    static final public byte SYNACK=26;
     static final public byte DATA=24;
     static final public byte FIN=25;
 
 
     static final public int MAX_ATTEMPTS=10;
+    static final public int TIME_WAIT=5000;
     static final public int TIMEOUT = 1;
 
     static final public int MAX_DATA_LEN = 8172;

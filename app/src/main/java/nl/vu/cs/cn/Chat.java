@@ -20,6 +20,8 @@ public class Chat extends Activity {
 	EditText upperEditText, lowerEditText;
 	Button upperSend, lowerSend;
 
+	//Reader Runnable used in both sockets
+	//Both sockets read and write at the same time
 	class Reader implements Runnable{
 
 		private TCP.Socket socket;
@@ -33,7 +35,7 @@ public class Chat extends Activity {
 			this.buffer = new byte[MSG_LNGTH];
 			this.dst = dst;
 		}
-
+		// Reads data from a given socket
 		public void run() {
 
             class Writer implements Runnable{
@@ -66,7 +68,7 @@ public class Chat extends Activity {
 	}
 
 
-
+	//function that converts a msg to byte array and sends it through a given socket used in both sockets
 	private int writeToSock(TCP.Socket sck, String msg){
 		byte[] buffer = new byte[MSG_LNGTH];
 		byte[] msgArray = msg.getBytes();
@@ -79,6 +81,8 @@ public class Chat extends Activity {
 		return sck.write(buffer, 0, MSG_LNGTH);
 	}
 
+
+	// Server socket accepts connections and starts the reader
 	class Upper implements Runnable{
 		TCP.Socket uppersock;
 		TextView upperTextView;
@@ -113,6 +117,7 @@ public class Chat extends Activity {
 
 	}
 
+	//Client socket connects to server and starts the reader
 	class Lower implements Runnable{
 
 		TCP.Socket lowersock;
@@ -206,6 +211,8 @@ public class Chat extends Activity {
 
 	}
 
+
+	//Starts sockets on Resume in order to reconnect after each activity resume
 	@Override
 	public void onResume(){
 		super.onResume();
