@@ -69,7 +69,7 @@ public class CloseTest extends TestCase {
 
     }
 
-    public void testCloseUnoppenedConnection() throws InterruptedException{
+    public void testCloseUnopenedConnection() throws InterruptedException{
 
         class Server implements Runnable {
 
